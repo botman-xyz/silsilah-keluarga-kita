@@ -1,14 +1,13 @@
 import { useCallback } from 'react';
-import { db, collection, addDoc, updateDoc, deleteDoc, doc, setDoc, getDocs, handleFirestoreError, OperationType } from '../../firebase';
 import { Family, Member, UserProfile } from '../../types';
 import { isDuplicateMember } from '../../lib/utils';
 import { toast } from 'sonner';
-import { FirebaseFamilyRepository } from '../../infrastructure/repositories/FirebaseFamilyRepository';
-import { FirebaseMemberRepository } from '../../infrastructure/repositories/FirebaseMemberRepository';
 import { FamilyService } from '../../application/services/FamilyService';
 import { MemberService } from '../../application/services/MemberService';
+import { FirebaseFamilyRepository } from '../../infrastructure/repositories/FirebaseFamilyRepository';
+import { FirebaseMemberRepository } from '../../infrastructure/repositories/FirebaseMemberRepository';
 
-// Initialize services (repositories use db internally from firebase.ts)
+// Initialize services with repositories (Clean Architecture: Application layer depends on Infrastructure)
 const familyRepository = new FirebaseFamilyRepository();
 const memberRepository = new FirebaseMemberRepository();
 const familyService = new FamilyService(familyRepository);
@@ -31,7 +30,12 @@ interface UseAppHandlersProps {
 
 /**
  * Custom hook that extracts all application handlers from App.tsx
- * Groups handlers by domain: Family, Member, and Utility
+ * Uses Clean Architecture: Presentation → Application → Infrastructure
+ * 
+ * Groups handlers by domain:
+ * - Family: handleAddFamily, handleDeleteFamily, handleRemoveCollaborator
+ * - Member: handleViewMember, handleQuickAddRelative, handleSaveMember, handleDeleteMember
+ * - Utility: checkDuplicates
  */
 export function useAppHandlers({
   user,
@@ -49,7 +53,7 @@ export function useAppHandlers({
 }: UseAppHandlersProps) {
 
   // ============================================
-  // FAMILY HANDLERS
+  // FAMILY HANDLERS (using FamilyService)
   // ============================================
 
   /**
@@ -63,9 +67,7 @@ export function useAppHandlers({
     // If editing existing family, update it
     if (editingFamily) {
       try {
-        await updateDoc(doc(db, 'families', editingFamily.id), {
-          name: nameToUse.trim()
-        });
+        await familyService.updateFamily(editingFamily.id, { name: nameToUse.trim() });
         
         setNewFamilyName('');
         setEditingFamily(null);
@@ -73,7 +75,6 @@ export function useAppHandlers({
         toast.success('Keluarga berhasil diperbarui!');
         return true;
       } catch (e) {
-        handleFirestoreError(e, OperationType.UPDATE, 'families');
         toast.error('Gagal memperbarui keluarga.');
         return false;
       }
@@ -90,17 +91,9 @@ export function useAppHandlers({
     }
 
     try {
-      // Create family document
-      const familyRef = await addDoc(collection(db, 'families'), {
-        name: nameToUse.trim(),
-        ownerId: user.uid,
-        createdAt: new Date().toISOString()
-      });
-      
-      // Add creator as owner member with RBAC role
-      await setDoc(doc(db, 'families', familyRef.id, 'members', user.uid), {
-        role: 'owner',
-        joinedAt: new Date().toISOString()
+      await familyService.createFamily({ 
+        name: nameToUse.trim(), 
+        ownerId: user.uid 
       });
       
       setNewFamilyName('');
@@ -108,7 +101,6 @@ export function useAppHandlers({
       toast.success('Keluarga berhasil dibuat!');
       return true;
     } catch (e) {
-      handleFirestoreError(e, OperationType.CREATE, 'families');
       toast.error('Gagal membuat keluarga.');
       return false;
     }
@@ -120,15 +112,21 @@ export function useAppHandlers({
   const handleDeleteFamily = useCallback(async () => {
     if (!selectedFamily) return;
     try {
-      const membersSnapshot = await getDocs(collection(db, 'families', selectedFamily.id, 'people'));
-      const deletePromises = membersSnapshot.docs.map(d => deleteDoc(d.ref));
-      await Promise.all(deletePromises);
-      await deleteDoc(doc(db, 'families', selectedFamily.id));
+      // Get all members first
+      const members = await memberService.getMembersByFamily(selectedFamily.id);
+      
+      // Delete all members
+      for (const member of members) {
+        await memberService.deleteMember(selectedFamily.id, member.id);
+      }
+      
+      // Delete the family
+      await familyService.deleteFamily(selectedFamily.id);
+      
       setSelectedFamily(null);
       setShowDeleteConfirm(false);
       toast.success('Keluarga berhasil dihapus.');
     } catch (e) {
-      handleFirestoreError(e, OperationType.DELETE, `families/${selectedFamily.id}`);
       toast.error('Gagal menghapus keluarga.');
     }
   }, [selectedFamily, setSelectedFamily, setShowDeleteConfirm]);
@@ -139,17 +137,14 @@ export function useAppHandlers({
   const handleRemoveCollaborator = useCallback(async (collabUid: string) => {
     if (!selectedFamily || !user || selectedFamily.ownerId !== user.uid) return;
     try {
-      const newCollabs = (selectedFamily.collaborators || []).filter(id => id !== collabUid);
-      await updateDoc(doc(db, 'families', selectedFamily.id), {
-        collaborators: newCollabs
-      });
+      await familyService.removeCollaborator(selectedFamily.id, collabUid);
     } catch (e) {
-      handleFirestoreError(e, OperationType.UPDATE, `families/${selectedFamily.id}`);
+      toast.error('Gagal menghapus kolaborator.');
     }
   }, [selectedFamily, user]);
 
   // ============================================
-  // MEMBER HANDLERS
+  // MEMBER HANDLERS (using MemberService)
   // ============================================
 
   /**
@@ -189,7 +184,6 @@ export function useAppHandlers({
    */
   const handleSaveMember = useCallback(async (memberData: Partial<Member>, editingMember: Member | null) => {
     if (!selectedFamily || !user) return;
-    const { id, ...dataToSave } = memberData;
 
     if (!editingMember) {
       // For new members, use shared utility for duplicate detection
@@ -207,46 +201,56 @@ export function useAppHandlers({
     }
 
     try {
-      // Use memberData.id to determine if this is an update or create
       const isEdit = !!(memberData.id && memberData.id.trim().length > 0);
       
-      let memberId = isEdit ? memberData.id : undefined;
-      
       if (isEdit) {
+        // Update existing member
         const oldSpouseId = editingMember?.spouseId;
         const newSpouseId = memberData.spouseId;
 
-        await updateDoc(doc(db, 'families', selectedFamily.id, 'people', memberId), {
-          ...dataToSave,
+        await memberService.updateMember(selectedFamily.id, memberData.id, {
+          ...memberData,
           updatedAt: new Date().toISOString()
         });
 
+        // Handle spouse relationship changes
         if (newSpouseId !== oldSpouseId) {
           if (oldSpouseId) {
-            await updateDoc(doc(db, 'families', selectedFamily.id, 'people', oldSpouseId), {
+            await memberService.updateMember(selectedFamily.id, oldSpouseId, {
               spouseId: '',
               updatedAt: new Date().toISOString()
             });
           }
           if (newSpouseId) {
-            await updateDoc(doc(db, 'families', selectedFamily.id, 'people', newSpouseId), {
-              spouseId: memberId,
+            await memberService.updateMember(selectedFamily.id, newSpouseId, {
+              spouseId: memberData.id,
               updatedAt: new Date().toISOString()
             });
           }
         }
       } else {
-        const docRef = await addDoc(collection(db, 'families', selectedFamily.id, 'people'), {
-          ...dataToSave,
+        // Create new member - extract required fields from memberData
+        const { id, name, gender, birthDate, fatherId, motherId, spouseId, maritalStatus, bio, photoUrl } = memberData;
+        
+        const createdMember = await memberService.createMember(selectedFamily.id, {
+          name: name || '',
+          gender: gender || 'other',
           familyId: selectedFamily.id,
+          birthDate,
+          fatherId,
+          motherId,
+          spouseId,
+          maritalStatus,
+          bio,
+          photoUrl,
           createdBy: user.uid,
           updatedAt: new Date().toISOString()
         });
-        memberId = docRef.id;
 
+        // If spouse is specified, update the spouse's spouseId
         if (memberData.spouseId) {
-          await updateDoc(doc(db, 'families', selectedFamily.id, 'people', memberData.spouseId), {
-            spouseId: memberId,
+          await memberService.updateMember(selectedFamily.id, memberData.spouseId, {
+            spouseId: createdMember.id,
             updatedAt: new Date().toISOString()
           });
         }
@@ -254,7 +258,6 @@ export function useAppHandlers({
       
       toast.success(editingMember ? 'Data anggota diperbarui!' : 'Anggota baru ditambahkan!');
     } catch (e) {
-      handleFirestoreError(e, OperationType.WRITE, `families/${selectedFamily.id}/people`);
       toast.error('Gagal menyimpan data anggota.');
     }
   }, [selectedFamily, user, allMembers]);
@@ -266,16 +269,18 @@ export function useAppHandlers({
     if (!selectedFamily) return;
     try {
       const memberToDelete = members.find(m => m.id === memberId);
+      
+      // Clear spouse relationship if exists
       if (memberToDelete?.spouseId) {
-        await updateDoc(doc(db, 'families', selectedFamily.id, 'people', memberToDelete.spouseId), {
+        await memberService.updateMember(selectedFamily.id, memberToDelete.spouseId, {
           spouseId: '',
           updatedAt: new Date().toISOString()
         });
       }
-      await deleteDoc(doc(db, 'families', selectedFamily.id, 'people', memberId));
+      
+      await memberService.deleteMember(selectedFamily.id, memberId);
       toast.success('Anggota berhasil dihapus.');
     } catch (e) {
-      handleFirestoreError(e, OperationType.DELETE, `families/${selectedFamily.id}/members/${memberId}`);
       toast.error('Gagal menghapus anggota.');
     }
   }, [selectedFamily]);
