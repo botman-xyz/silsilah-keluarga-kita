@@ -5,6 +5,7 @@ import FamilyStats from '../../features/family/FamilyStats';
 import FamilyTimeline from '../../features/family/FamilyTimeline';
 import RelationshipCalculator from '../../features/family/RelationshipCalculator';
 import FamilyStory from '../../features/family/FamilyStory';
+import MemberList from '../../features/member/MemberList';
 import { Users } from 'lucide-react';
 
 interface MainContentProps {
@@ -74,6 +75,8 @@ export const MainContent: React.FC<MainContentProps> = ({
         );
       case 'stats':
         return <FamilyStats members={members} />;
+      case 'list':
+        return <MemberList members={members} onSelectMember={onSelectMember} />;
       case 'timeline':
         return <FamilyTimeline members={members} />;
       case 'calculator':
