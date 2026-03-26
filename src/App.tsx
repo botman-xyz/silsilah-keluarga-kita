@@ -204,7 +204,14 @@ export default function App() {
     if (!selectedFamily || !user) return;
     const { id, ...dataToSave } = memberData;
 
+    // DEBUG: Log what we're saving
+    console.log('[DEBUG] handleSaveMember called');
+    console.log('[DEBUG] memberData.id:', memberData.id);
+    console.log('[DEBUG] editingMember?.id:', editingMember?.id);
+    console.log('[DEBUG] Is this an edit?', !!editingMember && !!memberData.id);
+
     if (!editingMember) {
+      // For new members, check for duplicates
       const isDuplicateMember = allMembers.filter(m => m.familyId === selectedFamily.id).some(m => 
         m.name.toLowerCase() === memberData.name?.trim().toLowerCase() && 
         m.birthDate === memberData.birthDate
@@ -217,10 +224,15 @@ export default function App() {
     }
 
     try {
-      let memberId = editingMember?.id;
+      // Use memberData.id to determine if this is an update or create
+      const isEdit = !!memberData.id;
+      console.log('[DEBUG] isEdit:', isEdit);
       
-      if (editingMember) {
-        const oldSpouseId = editingMember.spouseId;
+      let memberId = isEdit ? memberData.id : undefined;
+      
+      if (isEdit) {
+        console.log('[DEBUG] Updating existing member:', memberId);
+        const oldSpouseId = editingMember?.spouseId;
         const newSpouseId = memberData.spouseId;
 
         await updateDoc(doc(db, 'families', selectedFamily.id, 'people', editingMember.id), {
@@ -243,6 +255,7 @@ export default function App() {
           }
         }
       } else {
+        console.log('[DEBUG] Creating new member');
         const docRef = await addDoc(collection(db, 'families', selectedFamily.id, 'people'), {
           ...dataToSave,
           familyId: selectedFamily.id,
@@ -495,7 +508,7 @@ export default function App() {
           {showMemberModal && (
             <MemberFormModal
               isOpen={showMemberModal}
-              onClose={() => setShowMemberModal(false)}
+              onClose={() => { setShowMemberModal(false); setEditingMember(null); }}
               onSave={handleSaveMember}
               editingMember={editingMember}
               members={members}
