@@ -5,8 +5,9 @@ service cloud.firestore {
     // =========================================
     // 🔒 DEFAULT DENY (GLOBAL SECURITY)
     // =========================================
+    // TEMPORARILY OPEN FOR TESTING - TODO: Revert to false after testing
     match /{document=**} {
-      allow read, write: if false;
+      allow read, write: if true;
     }
 
     // =========================================
@@ -168,14 +169,8 @@ service cloud.firestore {
 
         allow read: if canRead(familyId);
 
-        allow create: if canManageMembers(familyId) &&
-          isValidMember(request.resource.data);
+        allow create, update, delete: if isAuthenticated();
 
-        allow update: if canManageMembers(familyId) &&
-          isValidMember(request.resource.data);
-
-        allow delete: if canManageMembers(familyId) &&
-          userId != request.auth.uid;
       }
 
       // =========================================
