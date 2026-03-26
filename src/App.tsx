@@ -44,6 +44,7 @@ export default function App() {
   const [showScanKKModal, setShowScanKKModal] = useState(false);
   const [editingMember, setEditingMember] = useState<Member | null>(null);
   const [showFamilyModal, setShowFamilyModal] = useState(false);
+  const [editingFamily, setEditingFamily] = useState<Family | null>(null);
   const [showShareModal, setShowShareModal] = useState(false);
   const [showHelpModal, setShowHelpModal] = useState(false);
   const [selectedMemberForDetail, setSelectedMemberForDetail] = useState<Member | null>(null);
@@ -98,6 +99,25 @@ export default function App() {
   const handleAddFamily = async (nameOverride?: string) => {
     const nameToUse = nameOverride || newFamilyName;
     if (!user || !nameToUse) return;
+    
+    // If editing existing family, update it
+    if (editingFamily) {
+      try {
+        await updateDoc(doc(db, 'families', editingFamily.id), {
+          name: nameToUse.trim()
+        });
+        
+        setNewFamilyName('');
+        setEditingFamily(null);
+        setShowFamilyModal(false);
+        toast.success('Keluarga berhasil diperbarui!');
+        return;
+      } catch (e) {
+        handleFirestoreError(e, OperationType.UPDATE, 'families');
+        toast.error('Gagal memperbarui keluarga.');
+        return;
+      }
+    }
     
     const isDuplicate = families.some(f => 
       f.name.toLowerCase() === nameToUse.trim().toLowerCase() && 
@@ -372,6 +392,7 @@ export default function App() {
                 onLogout={signOut}
                 onAddFamily={() => { setShowFamilyModal(true); setIsMobileSidebarOpen(false); }}
                 onEditFamily={(f) => {
+                  setEditingFamily(f);
                   setNewFamilyName(f.name);
                   setShowFamilyModal(true);
                   setIsMobileSidebarOpen(false);
@@ -402,6 +423,7 @@ export default function App() {
             onLogout={signOut}
             onAddFamily={() => setShowFamilyModal(true)}
             onEditFamily={(f) => {
+              setEditingFamily(f);
               setNewFamilyName(f.name);
               setShowFamilyModal(true);
             }}
@@ -460,6 +482,7 @@ export default function App() {
               onClose={() => {
                 setShowFamilyModal(false);
                 setNewFamilyName('');
+                setEditingFamily(null);
               }}
               onSave={handleAddFamily}
               initialFamilyName={newFamilyName}
