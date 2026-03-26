@@ -195,7 +195,7 @@ export async function importFamilyFromJSON(
       // Remove old familyId if it exists, we'll use the new one
       delete memberData.familyId;
       
-      const newMemberRef = await addDoc(collection(db, 'families', familyRef.id, 'members'), {
+      const newMemberRef = await addDoc(collection(db, 'families', familyRef.id, 'people'), {
         ...memberData,
         familyId: familyRef.id,
         updatedAt: new Date().toISOString()
@@ -220,7 +220,7 @@ export async function importFamilyFromJSON(
       }
 
       if (Object.keys(updates).length > 0) {
-        await updateDoc(doc(db, 'families', familyRef.id, 'members', newId), updates);
+        await updateDoc(doc(db, 'families', familyRef.id, 'people', newId), updates);
       }
     });
 

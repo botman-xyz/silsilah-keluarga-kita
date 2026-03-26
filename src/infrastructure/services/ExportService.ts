@@ -64,7 +64,7 @@ class FirebaseExportService {
         const { id, ...memberData } = m;
         delete memberData.familyId;
         
-        const newMemberRef = await addDoc(collection(db, 'families', familyRef.id, 'members'), {
+        const newMemberRef = await addDoc(collection(db, 'families', familyRef.id, 'people'), {
           ...memberData,
           familyId: familyRef.id,
           updatedAt: new Date().toISOString()
@@ -88,7 +88,7 @@ class FirebaseExportService {
         }
 
         if (Object.keys(updates).length > 0) {
-          await updateDoc(doc(db, 'families', familyRef.id, 'members', newId), updates);
+          await updateDoc(doc(db, 'families', familyRef.id, 'people', newId), updates);
         }
       });
 

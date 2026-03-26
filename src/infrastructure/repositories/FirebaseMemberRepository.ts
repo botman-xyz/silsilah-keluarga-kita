@@ -20,7 +20,7 @@ import { handleFirestoreError, OperationType } from '../../firebase';
  */
 export class FirebaseMemberRepository implements IMemberRepository {
   private getMembersCollection(familyId: string) {
-    return collection(db, 'families', familyId, 'members');
+    return collection(db, 'families', familyId, 'people');
   }
 
   async getByFamilyId(familyId: string): Promise<Member[]> {
@@ -40,7 +40,7 @@ export class FirebaseMemberRepository implements IMemberRepository {
 
   async getById(familyId: string, memberId: string): Promise<Member | null> {
     try {
-      const docRef = doc(db, 'families', familyId, 'members', memberId);
+      const docRef = doc(db, 'families', familyId, 'people', memberId);
       const docSnap = await getDoc(docRef);
       if (docSnap.exists()) {
         return { id: docSnap.id, familyId, ...docSnap.data() } as Member;
@@ -67,7 +67,7 @@ export class FirebaseMemberRepository implements IMemberRepository {
 
   async update(familyId: string, memberId: string, data: Partial<Member>): Promise<void> {
     try {
-      const docRef = doc(db, 'families', familyId, 'members', memberId);
+      const docRef = doc(db, 'families', familyId, 'people', memberId);
       await updateDoc(docRef, data as Record<string, unknown>);
     } catch (error) {
       handleFirestoreError(error, OperationType.UPDATE, `families/${familyId}/members/${memberId}`);
@@ -77,7 +77,7 @@ export class FirebaseMemberRepository implements IMemberRepository {
 
   async delete(familyId: string, memberId: string): Promise<void> {
     try {
-      const docRef = doc(db, 'families', familyId, 'members', memberId);
+      const docRef = doc(db, 'families', familyId, 'people', memberId);
       await deleteDoc(docRef);
     } catch (error) {
       handleFirestoreError(error, OperationType.DELETE, `families/${familyId}/members/${memberId}`);

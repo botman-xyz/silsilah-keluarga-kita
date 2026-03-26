@@ -109,12 +109,19 @@ export default function App() {
     }
 
     try {
-      await addDoc(collection(db, 'families'), {
+      // Create family document
+      const familyRef = await addDoc(collection(db, 'families'), {
         name: nameToUse.trim(),
         ownerId: user.uid,
-        collaborators: [],
         createdAt: new Date().toISOString()
       });
+      
+      // Add creator as owner member with RBAC role
+      await setDoc(doc(db, 'families', familyRef.id, 'members', user.uid), {
+        role: 'owner',
+        joinedAt: new Date().toISOString()
+      });
+      
       setNewFamilyName('');
       setShowFamilyModal(false);
       toast.success('Keluarga berhasil dibuat!');
@@ -216,27 +223,27 @@ export default function App() {
         const oldSpouseId = editingMember.spouseId;
         const newSpouseId = memberData.spouseId;
 
-        await updateDoc(doc(db, 'families', selectedFamily.id, 'members', editingMember.id), {
+        await updateDoc(doc(db, 'families', selectedFamily.id, 'people', editingMember.id), {
           ...dataToSave,
           updatedAt: new Date().toISOString()
         });
 
         if (newSpouseId !== oldSpouseId) {
           if (oldSpouseId) {
-            await updateDoc(doc(db, 'families', selectedFamily.id, 'members', oldSpouseId), {
+            await updateDoc(doc(db, 'families', selectedFamily.id, 'people', oldSpouseId), {
               spouseId: '',
               updatedAt: new Date().toISOString()
             });
           }
           if (newSpouseId) {
-            await updateDoc(doc(db, 'families', selectedFamily.id, 'members', newSpouseId), {
+            await updateDoc(doc(db, 'families', selectedFamily.id, 'people', newSpouseId), {
               spouseId: editingMember.id,
               updatedAt: new Date().toISOString()
             });
           }
         }
       } else {
-        const docRef = await addDoc(collection(db, 'families', selectedFamily.id, 'members'), {
+        const docRef = await addDoc(collection(db, 'families', selectedFamily.id, 'people'), {
           ...dataToSave,
           familyId: selectedFamily.id,
           createdBy: user.uid,
@@ -245,7 +252,7 @@ export default function App() {
         memberId = docRef.id;
 
         if (memberData.spouseId) {
-          await updateDoc(doc(db, 'families', selectedFamily.id, 'members', memberData.spouseId), {
+          await updateDoc(doc(db, 'families', selectedFamily.id, 'people', memberData.spouseId), {
             spouseId: memberId,
             updatedAt: new Date().toISOString()
           });
@@ -255,7 +262,7 @@ export default function App() {
       setEditingMember(null);
       toast.success(editingMember ? 'Data anggota diperbarui!' : 'Anggota baru ditambahkan!');
     } catch (e) {
-      handleFirestoreError(e, OperationType.WRITE, `families/${selectedFamily.id}/members`);
+      handleFirestoreError(e, OperationType.WRITE, `families/${selectedFamily.id}/people`);
       toast.error('Gagal menyimpan data anggota.');
     }
   };
@@ -265,12 +272,12 @@ export default function App() {
     try {
       const memberToDelete = members.find(m => m.id === memberId);
       if (memberToDelete?.spouseId) {
-        await updateDoc(doc(db, 'families', selectedFamily.id, 'members', memberToDelete.spouseId), {
+        await updateDoc(doc(db, 'families', selectedFamily.id, 'people', memberToDelete.spouseId), {
           spouseId: '',
           updatedAt: new Date().toISOString()
         });
       }
-      await deleteDoc(doc(db, 'families', selectedFamily.id, 'members', memberId));
+      await deleteDoc(doc(db, 'families', selectedFamily.id, 'people', memberId));
       toast.success('Anggota berhasil dihapus.');
     } catch (e) {
       handleFirestoreError(e, OperationType.DELETE, `families/${selectedFamily.id}/members/${memberId}`);
@@ -281,7 +288,7 @@ export default function App() {
   const handleDeleteFamily = async () => {
     if (!selectedFamily) return;
     try {
-      const membersSnapshot = await getDocs(collection(db, 'families', selectedFamily.id, 'members'));
+      const membersSnapshot = await getDocs(collection(db, 'families', selectedFamily.id, 'people'));
       const deletePromises = membersSnapshot.docs.map(d => deleteDoc(d.ref));
       await Promise.all(deletePromises);
       await deleteDoc(doc(db, 'families', selectedFamily.id));
