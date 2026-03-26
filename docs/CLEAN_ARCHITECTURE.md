@@ -229,3 +229,24 @@ The `src/features/` folder contains presentation-layer UI components organized b
 - `ui/` - Shared UI components
 
 This is a valid pattern for organizing presentation components, but it's separate from the core Clean Architecture layers.
+
+### 4. Removed Unused Duplicate UI Components
+
+Found and removed duplicate modal components in `src/features/ui/` that were not being used:
+- `HelpModal.tsx` - unused (was using `src/components/modals/HelpModal.tsx`)
+- `SearchModal.tsx` - unused (was using `src/components/modals/SearchModal.tsx`)
+
+### 5. Utils Organization
+
+Two utils folders exist for different purposes:
+- `src/lib/` - Shared utility functions (date formatting, member utilities, error handling)
+- `src/utils/` - Wrapper files that delegate to feature implementations (dataHelpers, printHelpers)
+- `src/types.ts` - Re-exports from domain entities for backwards compatibility
+
+### 6. Refactored Direct Firebase Usage
+
+Found and refactored components using Firebase directly:
+- `src/components/modals/ShareModal.tsx` - Was using `updateDoc` directly, now uses `familyService.addCollaborator()`
+- Removed unused `src/features/ui/ShareModal.tsx` (was also using direct Firebase)
+
+This ensures all data operations go through the application services layer, maintaining the Clean Architecture dependency flow.

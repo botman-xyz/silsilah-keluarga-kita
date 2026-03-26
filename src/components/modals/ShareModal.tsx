@@ -1,10 +1,9 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { X } from 'lucide-react';
-import { Family, UserProfile } from '../../types';
+import { Family, UserProfile } from '../../domain/entities';
 import { toast } from 'sonner';
-import { doc, updateDoc } from 'firebase/firestore';
-import { db, handleFirestoreError, OperationType } from '../../firebase';
+import { familyService } from '../../infrastructure';
 
 interface ShareModalProps {
   isOpen: boolean;
@@ -27,14 +26,11 @@ export const ShareModal: React.FC<ShareModalProps> = ({ isOpen, onClose, selecte
       return;
     }
     try {
-      await updateDoc(doc(db, 'families', selectedFamily.id), {
-        collaborators: [...(selectedFamily.collaborators || []), collaboratorEmail]
-      });
+      await familyService.addCollaborator(selectedFamily.id, collaboratorEmail);
       onClose();
       setCollaboratorEmail('');
       toast.success('Kolaborator berhasil ditambahkan!');
-    } catch (e) {
-      handleFirestoreError(e, OperationType.UPDATE, `families/${selectedFamily.id}`);
+    } catch (error) {
       toast.error('Gagal menambahkan kolaborator.');
     }
   };
