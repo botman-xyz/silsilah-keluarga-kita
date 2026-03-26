@@ -1,0 +1,26 @@
+{
+  "name": "Silsilah Keluarga Digital",
+  "short_name": "Silsilah",
+  "description": "Aplikasi silsilah keluarga modern dengan dukungan AI.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#2563eb",
+  "icons": [
+    {
+      "src": "/favicon.ico",
+      "sizes": "64x64 32x32 24x24 16x16",
+      "type": "image/x-icon"
+    },
+    {
+      "src": "https://picsum.photos/seed/family/192/192",
+      "type": "image/png",
+      "sizes": "192x192"
+    },
+    {
+      "src": "https://picsum.photos/seed/family/512/512",
+      "type": "image/png",
+      "sizes": "512x512"
+    }
+  ]
+}

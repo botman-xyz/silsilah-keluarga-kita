@@ -1,0 +1,86 @@
+{
+  "entities": {
+    "User": {
+      "title": "User",
+      "description": "Public user profile information",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string" },
+        "displayName": { "type": "string" },
+        "photoURL": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "role": { "type": "string", "enum": ["user", "admin"] }
+      },
+      "required": ["uid"]
+    },
+    "UserSettings": {
+      "title": "UserSettings",
+      "description": "Private user settings and PII",
+      "type": "object",
+      "properties": {
+        "email": { "type": "string", "format": "email" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["email"]
+    },
+    "Family": {
+      "title": "Family",
+      "description": "A family tree group",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string" },
+        "ownerId": { "type": "string" },
+        "collaborators": { "type": "array", "items": { "type": "string" } },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["name", "ownerId"]
+    },
+    "Member": {
+      "title": "Member",
+      "description": "An individual in a family tree",
+      "type": "object",
+      "properties": {
+        "familyId": { "type": "string" },
+        "name": { "type": "string" },
+        "gender": { "type": "string", "enum": ["male", "female", "other"] },
+        "birthDate": { "type": "string" },
+        "deathDate": { "type": "string" },
+        "photoUrl": { "type": "string" },
+        "fatherId": { "type": "string" },
+        "motherId": { "type": "string" },
+        "spouseId": { "type": "string" },
+        "spouseIds": { "type": "array", "items": { "type": "string" } },
+        "maritalStatus": { "type": "string", "enum": ["single", "married", "divorced", "widowed"] },
+        "bio": { "type": "string" },
+        "media": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "url": { "type": "string" },
+              "type": { "type": "string", "enum": ["image", "document"] },
+              "name": { "type": "string" }
+            }
+          }
+        },
+        "createdBy": { "type": "string" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["familyId", "name"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": "User",
+      "description": "User profiles"
+    },
+    "/families/{familyId}": {
+      "schema": "Family",
+      "description": "Family tree groups"
+    },
+    "/families/{familyId}/members/{memberId}": {
+      "schema": "Member",
+      "description": "Members within a family tree"
+    }
+  }
+}
