@@ -1,128 +1,201 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    
-    // Default deny
+
+    // =========================================
+    // 🔒 DEFAULT DENY (GLOBAL SECURITY)
+    // =========================================
     match /{document=**} {
       allow read, write: if false;
     }
 
-    // Helper Functions
+    // =========================================
+    // 🧠 BASE HELPERS
+    // =========================================
     function isAuthenticated() {
       return request.auth != null;
-    }
-    
-    function isOwner(userId) {
-      return isAuthenticated() && request.auth.uid == userId;
-    }
-    
-    function isFamilyMember(familyId) {
-      return isAuthenticated() && 
-        exists(/databases/$(database)/documents/families/$(familyId)) && (
-          get(/databases/$(database)/documents/families/$(familyId)).data.ownerId == request.auth.uid || 
-          request.auth.uid in get(/databases/$(database)/documents/families/$(familyId)).data.get('collaborators', [])
-        );
     }
 
     function isAdmin() {
       return isAuthenticated() && (
-        (exists(/databases/$(database)/documents/users/$(request.auth.uid)) && 
-         get(/databases/$(database)/documents/users/$(request.auth.uid)).data.get('role', 'user') == 'admin') ||
-        (request.auth.token.email == "botman.xyz@gmail.com" && request.auth.token.email_verified == true)
+        request.auth.token.email == "botman.xyz@gmail.com" &&
+        request.auth.token.email_verified == true
       );
     }
 
+    // =========================================
+    // 👤 USER HELPERS
+    // =========================================
+    function isSelf(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+
+    // =========================================
+    // 👨‍👩‍👧‍👦 FAMILY RBAC HELPERS (CORE)
+    // =========================================
+
+    function memberPath(familyId) {
+      return /databases/$(database)/documents/families/$(familyId)/members/$(request.auth.uid);
+    }
+
+    function memberDoc(familyId) {
+      return get(memberPath(familyId));
+    }
+
+    function memberExists(familyId) {
+      return exists(memberPath(familyId));
+    }
+
+    function memberRole(familyId) {
+      return memberDoc(familyId).data.role;
+    }
+
+    function isMember(familyId) {
+      return isAuthenticated() && memberExists(familyId);
+    }
+
+    function hasRole(familyId, roles) {
+      return isMember(familyId) && memberRole(familyId) in roles;
+    }
+
+    function isOwner(familyId) {
+      return hasRole(familyId, ['owner']);
+    }
+
+    function canRead(familyId) {
+      return isMember(familyId) || isAdmin();
+    }
+
+    function canWrite(familyId) {
+      return hasRole(familyId, ['owner', 'admin', 'editor']) || isAdmin();
+    }
+
+    function canManageMembers(familyId) {
+      return hasRole(familyId, ['owner', 'admin']) || isAdmin();
+    }
+
+    // =========================================
+    // ✅ VALIDATION HELPERS
+    // =========================================
+
+    function isValidUser(data) {
+      return data.keys().hasOnly(['uid', 'displayName', 'photoURL', 'createdAt', 'role']) &&
+        data.uid is string &&
+        data.role == 'user';
+    }
+
     function isValidFamily(data) {
-      let allowedFields = ['name', 'ownerId', 'collaborators', 'createdAt', 'kartuKeluargaUrl'];
-      return data.keys().hasOnly(allowedFields) &&
-             data.keys().hasAll(['name', 'ownerId', 'createdAt']) &&
-             data.name is string && data.name.size() > 0 && data.name.size() < 100 &&
-             data.ownerId is string &&
-             (!('collaborators' in data) || (data.collaborators is list && data.collaborators.size() < 50)) &&
-             (!('kartuKeluargaUrl' in data) || (data.kartuKeluargaUrl is string && data.kartuKeluargaUrl.size() < 1000));
+      return data.keys().hasOnly(['name', 'ownerId', 'createdAt']) &&
+        data.name is string &&
+        data.name.size() > 0 &&
+        data.name.size() < 100 &&
+        data.ownerId is string;
     }
 
     function isValidMember(data) {
-      let allowedFields = [
-        'id', 'familyId', 'name', 'gender', 'createdBy', 'updatedAt', 
-        'maritalStatus', 'birthDate', 'deathDate', 'photoUrl', 
-        'fatherId', 'motherId', 'spouseId', 'spouseIds', 'bio',
-        'externalSpouseName', 'externalFamilyId', 'media'
-      ];
-      return data.keys().hasOnly(allowedFields) &&
-             data.keys().hasAll(['familyId', 'name', 'gender', 'createdBy', 'updatedAt']) &&
-             data.familyId is string && data.familyId.size() < 100 &&
-             data.name is string && data.name.size() > 0 && data.name.size() < 100 &&
-             data.gender in ['male', 'female', 'other'] &&
-             (!('maritalStatus' in data) || data.maritalStatus in ['single', 'married', 'divorced', 'widowed']) &&
-             (!('birthDate' in data) || (data.birthDate is string && data.birthDate.size() < 50)) &&
-             (!('deathDate' in data) || (data.deathDate is string && data.deathDate.size() < 50)) &&
-             (!('photoUrl' in data) || (data.photoUrl is string && data.photoUrl.size() < 1000)) &&
-             (!('fatherId' in data) || (data.fatherId is string && data.fatherId.size() < 100)) &&
-             (!('motherId' in data) || (data.motherId is string && data.motherId.size() < 100)) &&
-             (!('spouseId' in data) || (data.spouseId is string && data.spouseId.size() < 100)) &&
-             (!('spouseIds' in data) || (data.spouseIds is list && data.spouseIds.size() < 20)) &&
-             (!('bio' in data) || (data.bio is string && data.bio.size() < 2000)) &&
-             (!('externalSpouseName' in data) || (data.externalSpouseName is string && data.externalSpouseName.size() < 100)) &&
-             (!('externalFamilyId' in data) || (data.externalFamilyId is string && data.externalFamilyId.size() < 100)) &&
-             (!('media' in data) || (data.media is list && data.media.size() < 50));
+      return data.keys().hasOnly(['role', 'joinedAt']) &&
+        data.role in ['owner', 'admin', 'editor', 'viewer'];
     }
 
-    // Test collection for connection test
+    function isValidPerson(data) {
+      let allowed = [
+        'name', 'gender', 'createdBy', 'updatedAt',
+        'maritalStatus', 'birthDate', 'deathDate',
+        'photoUrl', 'fatherId', 'motherId',
+        'spouseIds', 'bio'
+      ];
+
+      return data.keys().hasOnly(allowed) &&
+        data.name is string &&
+        data.name.size() > 0 &&
+        data.name.size() < 100 &&
+        data.gender in ['male', 'female', 'other'];
+    }
+
+    // =========================================
+    // 🧪 TEST
+    // =========================================
     match /test/connection {
       allow read: if true;
     }
 
-    // User Profiles
+    // =========================================
+    // 👤 USERS
+    // =========================================
     match /users/{userId} {
-      allow read: if isAuthenticated();
-      allow create: if isOwner(userId) && 
-                      request.resource.data.keys().hasOnly(['uid', 'displayName', 'photoURL', 'createdAt', 'role']) && 
-                      request.resource.data.role == 'user' &&
-                      request.resource.data.uid == userId;
-      allow update: if (isOwner(userId) && 
-                       request.resource.data.diff(resource.data).affectedKeys().hasOnly(['displayName', 'photoURL']) &&
-                       request.resource.data.uid == resource.data.uid) || isAdmin();
 
-      // Private settings (PII)
-      match /private/settings {
-        allow read, write: if isOwner(userId) || isAdmin();
+      allow read: if isAuthenticated();
+
+      allow create: if isSelf(userId) &&
+        isValidUser(request.resource.data) &&
+        request.resource.data.uid == userId;
+
+      allow update: if isSelf(userId) &&
+        request.resource.data.uid == resource.data.uid;
+
+      allow delete: if isSelf(userId) || isAdmin();
+
+      // Private data
+      match /private/{docId} {
+        allow read, write: if isSelf(userId) || isAdmin();
       }
     }
 
-    // Families
+    // =========================================
+    // 👨‍👩‍👧‍👦 FAMILIES
+    // =========================================
     match /families/{familyId} {
-      allow read: if isAuthenticated() && (
-        resource.data.ownerId == request.auth.uid || 
-        request.auth.uid in resource.data.get('collaborators', []) ||
-        isAdmin()
-      );
-      allow create: if isAuthenticated() && 
-                      request.resource.data.ownerId == request.auth.uid &&
-                      isValidFamily(request.resource.data);
-      allow update: if isAuthenticated() && (
-        (resource.data.ownerId == request.auth.uid && 
-         isValidFamily(request.resource.data) &&
-         request.resource.data.ownerId == resource.data.ownerId) || 
-        isAdmin()
-      );
-      allow delete: if isAuthenticated() && (resource.data.ownerId == request.auth.uid || isAdmin());
 
-      // Members within a family
-      match /members/{memberId} {
-        allow read: if isAdmin() || isFamilyMember(familyId);
-        allow create: if (isAdmin() || isFamilyMember(familyId)) && 
-                        isValidMember(request.resource.data) &&
-                        request.resource.data.familyId == familyId &&
-                        (isAdmin() || request.resource.data.createdBy == request.auth.uid);
-        allow update: if (isAdmin() || isFamilyMember(familyId)) && 
-                        isValidMember(request.resource.data) &&
-                        request.resource.data.familyId == resource.data.familyId;
-        allow delete: if isAdmin() || 
-                        (isAuthenticated() && (
-                          resource.data.createdBy == request.auth.uid || 
-                          get(/databases/$(database)/documents/families/$(familyId)).data.ownerId == request.auth.uid
-                        ));
+      allow read: if canRead(familyId);
+
+      allow create: if isAuthenticated() &&
+        request.resource.data.ownerId == request.auth.uid &&
+        isValidFamily(request.resource.data);
+
+      allow update: if canWrite(familyId);
+
+      allow delete: if isOwner(familyId) || isAdmin();
+
+      // =========================================
+      // 👥 MEMBERS (RBAC)
+      // =========================================
+      match /members/{userId} {
+
+        allow read: if canRead(familyId);
+
+        allow create: if canManageMembers(familyId) &&
+          isValidMember(request.resource.data);
+
+        allow update: if canManageMembers(familyId) &&
+          isValidMember(request.resource.data);
+
+        allow delete: if canManageMembers(familyId) &&
+          userId != request.auth.uid;
+      }
+
+      // =========================================
+      // 👨 DATA ORANG (GENEALOGY)
+      // =========================================
+      match /people/{personId} {
+
+        allow read: if canRead(familyId);
+
+        allow create: if canWrite(familyId) &&
+          isValidPerson(request.resource.data) &&
+          request.resource.data.createdBy == request.auth.uid;
+
+        allow update: if canWrite(familyId) &&
+          isValidPerson(request.resource.data);
+
+        allow delete: if isOwner(familyId) || isAdmin();
+      }
+
+      // =========================================
+      // 📜 AUDIT LOG (OPTIONAL)
+      // =========================================
+      match /logs/{logId} {
+        allow read: if isOwner(familyId) || isAdmin();
+        allow create: if isMember(familyId);
       }
     }
   }
