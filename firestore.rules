@@ -4,104 +4,106 @@ service cloud.firestore {
 
     // =========================================
     // 🔒 DEFAULT DENY (GLOBAL SECURITY)
+    // Open/Closed Principle: mudah extends dengan match spesifik
     // =========================================
     match /{document=**} {
       allow read, write: if false;
     }
 
     // =========================================
-    // 🧠 BASE HELPERS
+    // 🧠 BASE HELPERS (Single Responsibility)
     // =========================================
     function isAuthenticated() {
       return request.auth != null;
     }
 
     function isAdmin() {
-      return isAuthenticated() && (
+      return isAuthenticated() && 
         request.auth.token.email == "botman.xyz@gmail.com" &&
-        request.auth.token.email_verified == true
-      );
+        request.auth.token.email_verified == true;
     }
 
     // =========================================
-    // 👤 USER HELPERS
+    // 👤 USER HELPERS (Single Responsibility)
     // =========================================
     function isSelf(userId) {
       return isAuthenticated() && request.auth.uid == userId;
     }
 
     // =========================================
-    // 👨‍👩‍👧‍👦 FAMILY RBAC HELPERS (CORE)
+    // 👨‍👩‍👧‍👦 FAMILY RBAC HELPERS (DRY - Extract Common Logic)
     // =========================================
 
+    // 🔄 Helper untuk ambil path document
+    function docPath(collection, docId) {
+      return /databases/$(database)/documents/$(collection)/$(docId);
+    }
+
+    // 🔄 Helper untuk ambil path member
     function memberPath(familyId) {
-      return /databases/$(database)/documents/families/$(familyId)/members/$(request.auth.uid);
+      return docPath("families/" + familyId + "/members", request.auth.uid);
     }
 
-    function memberDoc(familyId) {
-      return get(memberPath(familyId));
-    }
-
-    function memberExists(familyId) {
-      return exists(memberPath(familyId));
-    }
-
-    function memberRole(familyId) {
-      return memberDoc(familyId).data.role;
-    }
-
+    // 🔄 Helper untuk cek apakah user adalah member
     function isMember(familyId) {
-      return isAuthenticated() && memberExists(familyId);
+      return isAuthenticated() && exists(memberPath(familyId));
     }
 
-    function hasRole(familyId, roles) {
-      return isMember(familyId) && memberRole(familyId) in roles;
+    // 🔄 Helper untuk cek apakah user adalah owner family
+    function isFamilyOwner(familyId) {
+      return isAuthenticated() && 
+        get(docPath("families", familyId)).data.ownerId == request.auth.uid;
     }
 
-    function isOwner(familyId) {
-      return hasRole(familyId, ['owner']);
+    // 🔄 Helper untuk cek role user dalam family
+    function memberRole(familyId) {
+      return get(memberPath(familyId)).data.role;
     }
 
-    function canRead(familyId) {
-      return isMember(familyId) || isAdmin() || 
-        (isAuthenticated() && get(/databases/$(database)/documents/families/$(familyId)).data.ownerId == request.auth.uid);
+    // 🔄 Helper untuk cek apakah user memiliki role tertentu
+    function hasRole(familyId, allowedRoles) {
+      return isMember(familyId) && memberRole(familyId) in allowedRoles;
     }
 
-    function canWrite(familyId) {
-      return hasRole(familyId, ['owner', 'admin', 'editor']) || isAdmin() || 
-        (isAuthenticated() && get(/databases/$(database)/documents/families/$(familyId)).data.ownerId == request.auth.uid);
+    // 🔄 Helper untuk cek izin baca ( DRY: konsolidasi logika )
+    function canReadFamily(familyId) {
+      return isMember(familyId) || isAdmin() || isFamilyOwner(familyId);
     }
 
-    function canManageMembers(familyId) {
-      return hasRole(familyId, ['owner', 'admin']) || isAdmin() ||
-        (isAuthenticated() && get(/databases/$(database)/documents/families/$(familyId)).data.ownerId == request.auth.uid);
+    // 🔄 Helper untuk cek izin tulis ( DRY: konsolidasi logika )
+    function canWriteFamily(familyId) {
+      return hasRole(familyId, ['owner', 'admin', 'editor']) || isAdmin() || isFamilyOwner(familyId);
     }
 
     // =========================================
-    // ✅ VALIDATION HELPERS
+    // ✅ VALIDATION HELPERS (Single Responsibility)
     // =========================================
+    
+    // 🔄 Validasi field yang diizinkan saja (tidak bergantung pada semua field)
+    function hasOnlyAllowedKeys(data, allowedKeys) {
+      return data.keys().hasOnly(allowedKeys);
+    }
+
+    function isValidString(value, minLen, maxLen) {
+      return value is string && value.size() >= minLen && value.size() <= maxLen;
+    }
 
     function isValidUser(data) {
-      return data.keys().hasOnly(['uid', 'displayName', 'photoURL', 'createdAt', 'role']) &&
+      let requiredKeys = ['uid', 'displayName', 'photoURL', 'createdAt', 'role'];
+      return hasOnlyAllowedKeys(data, requiredKeys) &&
         data.uid is string &&
         data.role == 'user';
     }
 
     function isValidFamily(data) {
-      return data.keys().hasOnly(['name', 'ownerId', 'createdAt']) &&
-        data.name is string &&
-        data.name.size() > 0 &&
-        data.name.size() < 100 &&
+      let requiredKeys = ['name', 'ownerId', 'createdAt'];
+      return hasOnlyAllowedKeys(data, requiredKeys) &&
+        isValidString(data.name, 1, 100) &&
         data.ownerId is string;
     }
 
-    function isValidMember(data) {
-      return data.keys().hasOnly(['role', 'joinedAt']) &&
-        data.role in ['owner', 'admin', 'editor', 'viewer'];
-    }
-
     function isValidPerson(data) {
-      let allowed = [
+      let requiredKeys = [
         'name', 'gender', 'createdBy', 'updatedAt',
         'maritalStatus', 'birthDate', 'deathDate',
         'photoUrl', 'fatherId', 'motherId',
@@ -109,93 +111,101 @@ service cloud.firestore {
         'externalSpouseName', 'externalFamilyId',
         'bio', 'media', 'familyId'
       ];
-
-      return data.keys().hasOnly(allowed) &&
-        data.name is string &&
-        data.name.size() > 0 &&
-        data.name.size() < 100 &&
+      return hasOnlyAllowedKeys(data, requiredKeys) &&
+        isValidString(data.name, 1, 100) &&
         data.gender in ['male', 'female', 'other'];
     }
 
     // =========================================
-    // 🧪 TEST
+    // 🧪 TEST COLLECTION (Public Read)
     // =========================================
     match /test/connection {
       allow read: if true;
     }
 
     // =========================================
-    // 👤 USERS
+    // 👤 USERS COLLECTION
     // =========================================
     match /users/{userId} {
-
+      // Read: semua user terautentikasi
       allow read: if isAuthenticated();
 
+      // Create: user hanya bisa create diri sendiri
       allow create: if isSelf(userId) &&
         isValidUser(request.resource.data) &&
         request.resource.data.uid == userId;
 
+      // Update: user hanya bisa update diri sendiri
       allow update: if isSelf(userId) &&
         request.resource.data.uid == resource.data.uid;
 
+      // Delete: self atau admin
       allow delete: if isSelf(userId) || isAdmin();
 
-      // Private data
+      // Private subcollection
       match /private/{docId} {
         allow read, write: if isSelf(userId) || isAdmin();
       }
     }
 
     // =========================================
-    // 👨‍👩‍👧‍👦 FAMILIES
+    // 👨‍👩‍👧‍👦 FAMILIES COLLECTION
     // =========================================
     match /families/{familyId} {
 
-      allow read: if canRead(familyId);
+      // Read: member, owner, atau admin
+      allow read: if canReadFamily(familyId);
 
+      // Create: user terautentikasi dan owns family baru
       allow create: if isAuthenticated() &&
         request.resource.data.ownerId == request.auth.uid &&
         isValidFamily(request.resource.data);
 
-      allow update: if canWrite(familyId);
+      // Update: member dengan role editor+
+      allow update: if canWriteFamily(familyId);
 
-      allow delete: if isOwner(familyId) || isAdmin();
+      // Delete: owner atau admin
+      allow delete: if hasRole(familyId, ['owner']) || isAdmin();
 
       // =========================================
-      // 👥 MEMBERS (RBAC)
+      // 👥 MEMBERS SUBCOLLECTION
       // =========================================
       match /members/{memberUserId} {
+        // Read: semua member family
+        allow read: if canReadFamily(familyId);
 
-        allow read: if canRead(familyId);
-
-        // Semua member yang sudah terautentikasi bisa create/update/delete
-        // (sistem RBAC bisa dikembangkan nanti)
+        // Create/Update/Delete: member yang sudah ada
         allow create, update, delete: if isAuthenticated() && isMember(familyId);
-
       }
 
       // =========================================
-      // 👨 DATA ORANG (GENEALOGY)
+      // 👨 PEOPLE SUBCOLLECTION (Genealogy Data)
       // =========================================
       match /people/{personId} {
+        // Read: semua member family
+        allow read: if canReadFamily(familyId);
 
-        allow read: if canRead(familyId);
-
-        allow create: if canWrite(familyId) &&
+        // Create: writer yang valid dan creator adalah user sendiri
+        allow create: if canWriteFamily(familyId) &&
           isValidPerson(request.resource.data) &&
           request.resource.data.createdBy == request.auth.uid;
 
-        allow update: if canWrite(familyId) &&
+        // Update: writer yang valid
+        allow update: if canWriteFamily(familyId) &&
           isValidPerson(request.resource.data);
 
-        allow delete: if isOwner(familyId) || isAdmin();
+        // Delete: owner atau admin
+        allow delete: if hasRole(familyId, ['owner']) || isAdmin();
       }
 
       // =========================================
-      // 📜 AUDIT LOG (OPTIONAL)
+      // 📜 AUDIT LOG SUBCOLLECTION
       // =========================================
       match /logs/{logId} {
-        allow read: if isOwner(familyId) || isAdmin();
+        // Read: owner atau admin
+        allow read: if hasRole(familyId, ['owner']) || isAdmin();
+
+        // Create: semua member
         allow create: if isMember(familyId);
       }
     }
