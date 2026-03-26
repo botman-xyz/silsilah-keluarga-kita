@@ -347,7 +347,7 @@ export default function App() {
           onImportJSON={() => handleImportJSON(user, () => {})}
         />
 
-        <main className="flex-1 flex flex-col h-dvh overflow-hidden relative">
+        <main className="flex-1 flex flex-col h-dvh overflow-auto relative">
           <Header 
             isSidebarCollapsed={isSidebarCollapsed}
             setIsSidebarCollapsed={setIsSidebarCollapsed}

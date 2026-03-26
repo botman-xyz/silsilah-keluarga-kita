@@ -38,7 +38,7 @@ export default function FamilyTimeline({ members }: FamilyTimelineProps) {
   }
 
   return (
-    <div className="p-4 sm:p-8 max-w-4xl mx-auto">
+    <div className="p-4 sm:p-8 max-w-4xl mx-auto pb-24 min-h-full">
       <div className="relative border-l-2 border-slate-100 ml-2 sm:ml-4 space-y-8 sm:space-y-12 pb-12">
         {events.map((event, index) => (
           <div key={index} className="relative pl-6 sm:pl-8">

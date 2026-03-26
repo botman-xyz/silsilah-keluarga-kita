@@ -139,7 +139,7 @@ export default function RelationshipCalculator({ members }: RelationshipCalculat
   const result = calculateRelationship();
 
   return (
-    <div className="p-4 sm:p-8 max-w-2xl mx-auto">
+    <div className="p-4 sm:p-8 max-w-2xl mx-auto pb-24 min-h-full">
       <div className="bg-white rounded-3xl border border-slate-100 shadow-xl p-6 sm:p-8">
         <div className="flex items-center gap-3 mb-6 sm:mb-8">
           <div className="w-10 h-10 sm:w-12 sm:h-12 bg-blue-50 text-blue-600 rounded-2xl flex items-center justify-center">

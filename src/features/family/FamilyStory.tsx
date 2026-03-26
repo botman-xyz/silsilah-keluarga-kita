@@ -78,7 +78,7 @@ export default function FamilyStory({ family, members }: FamilyStoryProps) {
   };
 
   return (
-    <div className="p-4 sm:p-8 max-w-4xl mx-auto">
+    <div className="p-4 sm:p-8 max-w-4xl mx-auto pb-24 min-h-full">
       <div className="bg-white rounded-3xl border border-slate-100 shadow-xl overflow-hidden">
         <div className="p-6 sm:p-8 border-b border-slate-50 bg-gradient-to-r from-blue-50/50 to-indigo-50/50">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">

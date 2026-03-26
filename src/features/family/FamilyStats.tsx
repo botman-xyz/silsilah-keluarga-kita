@@ -115,7 +115,7 @@ export default function FamilyStats({ members }: FamilyStatsProps) {
   ].filter(d => d.value > 0);
 
   return (
-    <div className="p-4 sm:p-8 max-w-6xl mx-auto space-y-6 sm:space-y-8">
+    <div className="p-4 sm:p-8 max-w-6xl mx-auto space-y-6 sm:space-y-8 pb-24 min-h-full">
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
         <StatCard 
           icon={<Users className="w-5 h-5 sm:w-6 sm:h-6 text-blue-600" />} 
