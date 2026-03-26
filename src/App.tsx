@@ -125,6 +125,7 @@ export default function App() {
   };
 
   const handleViewMember = (member: Member) => {
+    console.log('handleViewMember called with:', member);
     setSelectedMemberForDetail(member);
   };
 
@@ -477,6 +478,7 @@ export default function App() {
               member={selectedMemberForDetail}
               allMembers={allMembers}
               onEdit={(member) => {
+                console.log('MemberDetailModal onEdit called with:', member);
                 setEditingMember(member);
                 setShowMemberModal(true);
               }}
