@@ -21,6 +21,7 @@ import { handleImportJSON, exportAllData, deleteAllData } from './utils/dataHelp
 // Presentation Views
 import { AuthView } from './presentation/views/AuthView';
 import { MainContent } from './presentation/views/MainContent';
+import { useAppHandlers } from './presentation/hooks/useAppHandlers';
 
 // Modal Components
 import { FamilyModal } from './components/modals/FamilyModal';
@@ -57,6 +58,22 @@ export default function App() {
   const [isHeaderHidden, setIsHeaderHidden] = useState(false);
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [showKinshipModal, setShowKinshipModal] = useState(false);
+
+  // Extract handlers into custom hook
+  const handlers = useAppHandlers({
+    user,
+    families,
+    selectedFamily,
+    allMembers,
+    setSelectedFamily,
+    setShowDeleteConfirm,
+    setShowMemberModal,
+    setEditingMember,
+    setNewFamilyName: (name: string) => setNewFamilyName(name),
+    setShowFamilyModal: (show: boolean) => setShowFamilyModal(show),
+    setEditingFamily: (f: Family | null) => setEditingFamily(f),
+    setSelectedMemberForDetail: (m: Member | null) => setSelectedMemberForDetail(m),
+  });
 
   // Extended members for the tree
   const extendedMembers = useMemo(() => {
@@ -96,253 +113,50 @@ export default function App() {
     ? allMembers.filter(m => m.familyId === selectedFamily.id)
     : [];
 
-  const handleAddFamily = async (nameOverride?: string) => {
-    const nameToUse = nameOverride || newFamilyName;
-    if (!user || !nameToUse) return;
-    
-    // If editing existing family, update it
-    if (editingFamily) {
-      try {
-        await updateDoc(doc(db, 'families', editingFamily.id), {
-          name: nameToUse.trim()
-        });
-        
-        setNewFamilyName('');
-        setEditingFamily(null);
-        setShowFamilyModal(false);
-        toast.success('Keluarga berhasil diperbarui!');
-        return;
-      } catch (e) {
-        handleFirestoreError(e, OperationType.UPDATE, 'families');
-        toast.error('Gagal memperbarui keluarga.');
-        return;
-      }
-    }
-    
-    const isDuplicate = families.some(f => 
-      f.name.toLowerCase() === nameToUse.trim().toLowerCase() && 
-      f.ownerId === user.uid
-    );
-    
-    if (isDuplicate) {
-      toast.error('Keluarga dengan nama ini sudah ada.');
-      return;
-    }
+  // Use handlers from the custom hook
+  const { 
+    handleAddFamily: handleAddFamilyHandler,
+    handleDeleteFamily: handleDeleteFamilyHandler,
+    handleRemoveCollaborator: handleRemoveCollaboratorHandler,
+    handleViewMember: handleViewMemberHandler,
+    handleQuickAddRelative: handleQuickAddRelativeHandler,
+    handleSaveMember: handleSaveMemberHandler,
+    handleDeleteMember: handleDeleteMemberHandler,
+    checkDuplicates
+  } = handlers;
 
-    try {
-      // Create family document
-      const familyRef = await addDoc(collection(db, 'families'), {
-        name: nameToUse.trim(),
-        ownerId: user.uid,
-        createdAt: new Date().toISOString()
-      });
-      
-      // Add creator as owner member with RBAC role
-      await setDoc(doc(db, 'families', familyRef.id, 'members', user.uid), {
-        role: 'owner',
-        joinedAt: new Date().toISOString()
-      });
-      
-      setNewFamilyName('');
-      setShowFamilyModal(false);
-      toast.success('Keluarga berhasil dibuat!');
-    } catch (e) {
-      handleFirestoreError(e, OperationType.CREATE, 'families');
-      toast.error('Gagal membuat keluarga.');
-    }
+  // Wrapper functions that call handlers with additional state
+  const handleAddFamily = async (nameOverride?: string) => {
+    await handleAddFamilyHandler(nameOverride || newFamilyName, editingFamily);
+    setNewFamilyName('');
+    setEditingFamily(null);
+    setShowFamilyModal(false);
   };
 
   const handleViewMember = (member: Member) => {
-    console.log('handleViewMember called with:', member);
-    setSelectedMemberForDetail(member);
+    handleViewMemberHandler(member);
   };
 
   const handleQuickAddRelative = (member: Member) => {
-    const newMember: Partial<Member> = {
-      familyId: selectedFamily?.id,
-    };
-
-    if (member.gender === 'male') {
-      newMember.fatherId = member.id;
-      if (member.spouseId) {
-        newMember.motherId = member.spouseId;
-      }
-    } else if (member.gender === 'female') {
-      newMember.motherId = member.id;
-      if (member.spouseId) {
-        newMember.fatherId = member.spouseId;
-      }
-    }
-
-    setEditingMember(newMember as Member);
-    setShowMemberModal(true);
-  };
-
-  const checkDuplicates = () => {
-    if (!user) return;
-
-    const ownedFamilies = families.filter(f => f.ownerId === user.uid);
-    const familyNames = new Set<string>();
-    const duplicateFamilies: string[] = [];
-
-    ownedFamilies.forEach(f => {
-      const name = f.name.toLowerCase().trim();
-      if (familyNames.has(name)) {
-        duplicateFamilies.push(f.name);
-      }
-      familyNames.add(name);
-    });
-
-    const duplicateMembers: string[] = [];
-    if (selectedFamily) {
-      const familyMembers = allMembers.filter(m => m.familyId === selectedFamily.id);
-      const memberKeys = new Set<string>();
-
-      familyMembers.forEach(m => {
-        const key = `${m.name.toLowerCase().trim()}|${m.birthDate || ''}`;
-        if (memberKeys.has(key)) {
-          duplicateMembers.push(m.name);
-        }
-        memberKeys.add(key);
-      });
-    }
-
-    if (duplicateFamilies.length === 0 && duplicateMembers.length === 0) {
-      toast.info('Tidak ditemukan duplikasi keluarga atau anggota.');
-    } else {
-      let message = '';
-      if (duplicateFamilies.length > 0) {
-        message += `Duplikasi keluarga: ${[...new Set(duplicateFamilies)].join(', ')}. `;
-      }
-      if (duplicateMembers.length > 0) {
-        message += `Duplikasi anggota di keluarga ini: ${[...new Set(duplicateMembers)].join(', ')}.`;
-      }
-      toast.warning(message, { duration: 10000 });
-    }
+    handleQuickAddRelativeHandler(member);
   };
 
   const handleSaveMember = async (memberData: Partial<Member>) => {
-    if (!selectedFamily || !user) return;
-    const { id, ...dataToSave } = memberData;
-
-    if (!editingMember) {
-      // For new members, use shared utility for duplicate detection
-      const isDuplicate = isDuplicateMember(
-        allMembers.filter(m => m.familyId === selectedFamily.id),
-        memberData.name || '',
-        memberData.birthDate,
-        memberData.id
-      );
-      
-      if (isDuplicate) {
-        toast.error('Anggota dengan nama dan tanggal lahir ini sudah ada di keluarga ini.');
-        return;
-      }
-    }
-
-    try {
-      // Use memberData.id to determine if this is an update or create
-      // Ensure it's not just an empty string
-      const isEdit = !!(memberData.id && memberData.id.trim().length > 0);
-      console.log('[DEBUG] isEdit:', isEdit, 'memberData.id:', memberData.id);
-      
-      let memberId = isEdit ? memberData.id : undefined;
-      
-      if (isEdit) {
-        console.log('[DEBUG] Updating existing member:', memberId);
-        const oldSpouseId = editingMember?.spouseId;
-        const newSpouseId = memberData.spouseId;
-
-        // Use memberId (from memberData.id) instead of editingMember.id
-        await updateDoc(doc(db, 'families', selectedFamily.id, 'people', memberId), {
-          ...dataToSave,
-          updatedAt: new Date().toISOString()
-        });
-
-        if (newSpouseId !== oldSpouseId) {
-          if (oldSpouseId) {
-            await updateDoc(doc(db, 'families', selectedFamily.id, 'people', oldSpouseId), {
-              spouseId: '',
-              updatedAt: new Date().toISOString()
-            });
-          }
-          if (newSpouseId) {
-            await updateDoc(doc(db, 'families', selectedFamily.id, 'people', newSpouseId), {
-              spouseId: memberId,  // Use memberId instead of editingMember.id
-              updatedAt: new Date().toISOString()
-            });
-          }
-        }
-      } else {
-        console.log('[DEBUG] Creating new member');
-        const docRef = await addDoc(collection(db, 'families', selectedFamily.id, 'people'), {
-          ...dataToSave,
-          familyId: selectedFamily.id,
-          createdBy: user.uid,
-          updatedAt: new Date().toISOString()
-        });
-        memberId = docRef.id;
-
-        if (memberData.spouseId) {
-          await updateDoc(doc(db, 'families', selectedFamily.id, 'people', memberData.spouseId), {
-            spouseId: memberId,
-            updatedAt: new Date().toISOString()
-          });
-        }
-      }
-      setShowMemberModal(false);
-      setEditingMember(null);
-      toast.success(editingMember ? 'Data anggota diperbarui!' : 'Anggota baru ditambahkan!');
-    } catch (e) {
-      handleFirestoreError(e, OperationType.WRITE, `families/${selectedFamily.id}/people`);
-      toast.error('Gagal menyimpan data anggota.');
-    }
+    await handleSaveMemberHandler(memberData, editingMember);
+    setShowMemberModal(false);
+    setEditingMember(null);
   };
-  
+
   const handleDeleteMember = async (memberId: string) => {
-    if (!selectedFamily) return;
-    try {
-      const memberToDelete = members.find(m => m.id === memberId);
-      if (memberToDelete?.spouseId) {
-        await updateDoc(doc(db, 'families', selectedFamily.id, 'people', memberToDelete.spouseId), {
-          spouseId: '',
-          updatedAt: new Date().toISOString()
-        });
-      }
-      await deleteDoc(doc(db, 'families', selectedFamily.id, 'people', memberId));
-      toast.success('Anggota berhasil dihapus.');
-    } catch (e) {
-      handleFirestoreError(e, OperationType.DELETE, `families/${selectedFamily.id}/members/${memberId}`);
-      toast.error('Gagal menghapus anggota.');
-    }
+    await handleDeleteMemberHandler(memberId, members);
   };
 
   const handleDeleteFamily = async () => {
-    if (!selectedFamily) return;
-    try {
-      const membersSnapshot = await getDocs(collection(db, 'families', selectedFamily.id, 'people'));
-      const deletePromises = membersSnapshot.docs.map(d => deleteDoc(d.ref));
-      await Promise.all(deletePromises);
-      await deleteDoc(doc(db, 'families', selectedFamily.id));
-      setSelectedFamily(null);
-      setShowDeleteConfirm(false);
-      toast.success('Keluarga berhasil dihapus.');
-    } catch (e) {
-      handleFirestoreError(e, OperationType.DELETE, `families/${selectedFamily.id}`);
-      toast.error('Gagal menghapus keluarga.');
-    }
+    await handleDeleteFamilyHandler();
   };
 
   const handleRemoveCollaborator = async (collabUid: string) => {
-    if (!selectedFamily || !user || selectedFamily.ownerId !== user.uid) return;
-    try {
-      const newCollabs = (selectedFamily.collaborators || []).filter(id => id !== collabUid);
-      await updateDoc(doc(db, 'families', selectedFamily.id), {
-        collaborators: newCollabs
-      });
-    } catch (e) {
-      handleFirestoreError(e, OperationType.UPDATE, `families/${selectedFamily.id}`);
-    }
+    await handleRemoveCollaboratorHandler(collabUid);
   };
 
   const authFlow = (
