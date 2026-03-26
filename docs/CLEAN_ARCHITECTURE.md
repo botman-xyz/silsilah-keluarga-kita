@@ -251,3 +251,13 @@ Found and refactored components using Firebase directly:
 - Removed unused `src/features/ui/ShareModal.tsx` (was also using direct Firebase)
 
 This ensures all data operations go through the application services layer, maintaining the Clean Architecture dependency flow.
+
+### 7. Separated FamilyTree Component
+
+Refactored the large FamilyTree component (679 lines) into a modular structure:
+- `src/features/tree/FamilyTree.tsx` - Main tree rendering with D3.js
+- `src/features/tree/ZoomControls.tsx` - Zoom UI controls (buttons, display)
+- `src/features/tree/treeLayout.ts` - Layout configuration utilities
+- `src/features/tree/index.ts` - Re-exports for convenient importing
+
+This improves maintainability by separating concerns: rendering logic, UI controls, and configuration.

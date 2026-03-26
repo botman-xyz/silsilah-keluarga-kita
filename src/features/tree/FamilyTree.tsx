@@ -1,6 +1,8 @@
 import React, { useEffect, useRef, useState } from 'react';
 import * as d3 from 'd3';
-import { Member } from '../../types';
+import { Member } from '../../domain/entities';
+import { ZoomControls } from './ZoomControls';
+import { getLayoutConfig, calculateFitScale } from './treeLayout';
 import { ZoomIn, ZoomOut, Maximize, MousePointer2, Eye, EyeOff } from 'lucide-react';
 
 interface FamilyTreeProps {
