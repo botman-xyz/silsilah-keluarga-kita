@@ -63,11 +63,13 @@ service cloud.firestore {
     }
 
     function canRead(familyId) {
-      return isMember(familyId) || isAdmin() || resource.data.ownerId == request.auth.uid;
+      return isMember(familyId) || isAdmin() || 
+        (isAuthenticated() && get(/databases/$(database)/documents/families/$(familyId)).data.ownerId == request.auth.uid);
     }
 
     function canWrite(familyId) {
-      return hasRole(familyId, ['owner', 'admin', 'editor']) || isAdmin() || resource.data.ownerId == request.auth.uid;
+      return hasRole(familyId, ['owner', 'admin', 'editor']) || isAdmin() || 
+        (isAuthenticated() && get(/databases/$(database)/documents/families/$(familyId)).data.ownerId == request.auth.uid);
     }
 
     function canManageMembers(familyId) {
