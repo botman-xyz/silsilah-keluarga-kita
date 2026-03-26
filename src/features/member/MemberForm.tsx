@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Member, Family } from '../../types';
-import { Plus, ImageIcon, FileText, Trash2, X } from 'lucide-react';
+import { Plus, ImageIcon, FileText, Trash2, X, AlertCircle } from 'lucide-react';
 import { toast } from 'sonner';
 
 interface MemberFormProps {
@@ -12,7 +12,78 @@ interface MemberFormProps {
   onCancel: () => void;
 }
 
+interface FormErrors {
+  name?: string;
+  birthDate?: string;
+  deathDate?: string;
+  fatherId?: string;
+  motherId?: string;
+  spouseId?: string;
+}
+
 export function MemberForm({ initialData, members, allMembers, families, onSave, onCancel }: MemberFormProps) {
+  const [errors, setErrors] = useState<FormErrors>({});
+  
+  const validateForm = (): boolean => {
+    const newErrors: FormErrors = {};
+    
+    // Name validation
+    if (!formData.name || formData.name.trim().length === 0) {
+      newErrors.name = 'Nama lengkap harus diisi';
+    } else if (formData.name.trim().length < 2) {
+      newErrors.name = 'Nama harus minimal 2 karakter';
+    }
+    
+    // Birth date validation
+    if (formData.birthDate) {
+      const birthDate = new Date(formData.birthDate);
+      const today = new Date();
+      today.setHours(23, 59, 59, 999);
+      if (birthDate > today) {
+        newErrors.birthDate = 'Tanggal lahir tidak boleh di masa depan';
+      }
+    }
+    
+    // Death date validation
+    if (formData.deathDate && formData.birthDate) {
+      const birthDate = new Date(formData.birthDate);
+      const deathDate = new Date(formData.deathDate);
+      if (deathDate < birthDate) {
+        newErrors.deathDate = 'Tanggal wafat harus setelah tanggal lahir';
+      }
+    }
+    
+    // Father gender validation
+    if (formData.fatherId) {
+      const father = allMembers.find(m => m.id === formData.fatherId);
+      if (father && father.gender !== 'male') {
+        newErrors.fatherId = 'Ayah harus berjenis kelamin laki-laki';
+      }
+      if (father && formData.id && father.id === formData.id) {
+        newErrors.fatherId = 'Seseorang tidak bisa menjadi ayah bagi dirinya sendiri';
+      }
+    }
+    
+    // Mother gender validation
+    if (formData.motherId) {
+      const mother = allMembers.find(m => m.id === formData.motherId);
+      if (mother && mother.gender !== 'female') {
+        newErrors.motherId = 'Ibu harus berjenis kelamin perempuan';
+      }
+      if (mother && formData.id && mother.id === formData.id) {
+        newErrors.motherId = 'Seseorang tidak bisa menjadi ibu bagi dirinya sendiri';
+      }
+    }
+    
+    // Spouse cannot be self
+    if (formData.spouseId && formData.id && formData.spouseId === formData.id) {
+      newErrors.spouseId = 'Seseorang tidak bisa menjadi pasangan bagi dirinya sendiri';
+    }
+    
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
+  
   const [formData, setFormData] = useState<Partial<Member>>(() => {
     const base = {
       name: '',
@@ -79,10 +150,19 @@ export function MemberForm({ initialData, members, allMembers, families, onSave,
             <input 
               type="text" 
               value={formData.name}
-              onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-              className="w-full p-4 bg-slate-50 border border-slate-200 rounded-2xl outline-none focus:ring-2 focus:ring-blue-500 transition-all"
+              onChange={(e) => {
+                setFormData({ ...formData, name: e.target.value });
+                if (errors.name) setErrors({ ...errors, name: undefined });
+              }}
+              className={`w-full p-4 bg-slate-50 border rounded-2xl outline-none focus:ring-2 transition-all ${errors.name ? 'border-red-500 focus:ring-red-500' : 'border-slate-200 focus:ring-blue-500'}`}
               placeholder="Nama lengkap"
             />
+            {errors.name && (
+              <p className="mt-1 text-xs text-red-500 flex items-center gap-1">
+                <AlertCircle className="w-3 h-3" />
+                {errors.name}
+              </p>
+            )}
           </div>
           <div>
             <label className="block text-sm font-bold text-slate-700 mb-2">Jenis Kelamin</label>
@@ -124,9 +204,36 @@ export function MemberForm({ initialData, members, allMembers, families, onSave,
             <input 
               type="date" 
               value={formData.birthDate}
-              onChange={(e) => setFormData({ ...formData, birthDate: e.target.value })}
-              className="w-full p-4 bg-slate-50 border border-slate-200 rounded-2xl outline-none focus:ring-2 focus:ring-blue-500 transition-all"
+              onChange={(e) => {
+                setFormData({ ...formData, birthDate: e.target.value });
+                if (errors.birthDate) setErrors({ ...errors, birthDate: undefined });
+              }}
+              className={`w-full p-4 bg-slate-50 border rounded-2xl outline-none focus:ring-2 transition-all ${errors.birthDate ? 'border-red-500 focus:ring-red-500' : 'border-slate-200 focus:ring-blue-500'}`}
             />
+            {errors.birthDate && (
+              <p className="mt-1 text-xs text-red-500 flex items-center gap-1">
+                <AlertCircle className="w-3 h-3" />
+                {errors.birthDate}
+              </p>
+            )}
+          </div>
+          <div>
+            <label className="block text-sm font-bold text-slate-700 mb-2">Tanggal Wafat (Opsional)</label>
+            <input 
+              type="date" 
+              value={formData.deathDate || ''}
+              onChange={(e) => {
+                setFormData({ ...formData, deathDate: e.target.value });
+                if (errors.deathDate) setErrors({ ...errors, deathDate: undefined });
+              }}
+              className={`w-full p-4 bg-slate-50 border rounded-2xl outline-none focus:ring-2 transition-all ${errors.deathDate ? 'border-red-500 focus:ring-red-500' : 'border-slate-200 focus:ring-blue-500'}`}
+            />
+            {errors.deathDate && (
+              <p className="mt-1 text-xs text-red-500 flex items-center gap-1">
+                <AlertCircle className="w-3 h-3" />
+                {errors.deathDate}
+              </p>
+            )}
           </div>
           <div>
             <label className="block text-sm font-bold text-slate-700 mb-2">URL Foto (Opsional)</label>
@@ -355,20 +462,9 @@ export function MemberForm({ initialData, members, allMembers, families, onSave,
         </button>
         <button 
           onClick={() => {
-            if (!formData.name) {
-              toast.error('Nama lengkap harus diisi.');
-              return;
-            }
-            if (formData.fatherId && formData.fatherId === initialData.id) {
-              toast.error('Seseorang tidak bisa menjadi ayah bagi dirinya sendiri.');
-              return;
-            }
-            if (formData.motherId && formData.motherId === initialData.id) {
-              toast.error('Seseorang tidak bisa menjadi ibu bagi dirinya sendiri.');
-              return;
-            }
-            if (formData.spouseId && formData.spouseId === initialData.id) {
-              toast.error('Seseorang tidak bisa menjadi pasangan bagi dirinya sendiri.');
+            // Validate before saving
+            if (!validateForm()) {
+              toast.error('Mohon perbaiki kesalahan pada form');
               return;
             }
             onSave(formData);
