@@ -246,6 +246,7 @@ Two utils folders exist for different purposes:
 ### 6. Refactored Direct Firebase Usage
 
 Found and refactored components using Firebase directly:
+- `src/App.tsx` - Removed unused Firebase imports (auth, db, Firestore functions). Now only uses clean architecture hooks and services.
 - `src/components/modals/ShareModal.tsx` - Was using `updateDoc` directly, now uses `familyService.addCollaborator()`
 - Removed unused `src/features/ui/ShareModal.tsx` (was also using direct Firebase)
 

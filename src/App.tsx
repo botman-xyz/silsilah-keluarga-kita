@@ -1,6 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { auth, db, signInWithGoogle, logout, onAuthStateChanged, collection, query, where, onSnapshot, addDoc, updateDoc, deleteDoc, doc, getDoc, getDocs, setDoc, Timestamp, handleFirestoreError, OperationType, User } from './firebase';
-import { Family, Member, UserProfile } from './types';
+import { Family, Member, UserProfile } from './domain/entities';
 import { useAuth, useFamilies, useMembers } from './presentation/hooks';
 import { isDuplicateMember } from './lib/utils';
 import { Plus, LogOut, Users, Trash2, Edit2, Share2, Search, Scan, Eye, EyeOff } from 'lucide-react';
