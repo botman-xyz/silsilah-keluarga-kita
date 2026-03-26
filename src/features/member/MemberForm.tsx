@@ -22,9 +22,9 @@ interface FormErrors {
 }
 
 export function MemberForm({ initialData, members, allMembers, families, onSave, onCancel }: MemberFormProps) {
-  // DEBUG: Log initial data
-  console.log('[DEBUG] MemberForm received initialData:', initialData);
-  console.log('[DEBUG] Has id?:', !!initialData.id);
+  // DEBUG: Log initial data more thoroughly
+  console.log('[DEBUG] MemberForm received initialData:', JSON.stringify(initialData));
+  console.log('[DEBUG] Has id?:', !!initialData.id, 'id value:', initialData.id);
   
   const [errors, setErrors] = useState<FormErrors>({});
   

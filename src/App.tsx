@@ -204,12 +204,6 @@ export default function App() {
     if (!selectedFamily || !user) return;
     const { id, ...dataToSave } = memberData;
 
-    // DEBUG: Log what we're saving
-    console.log('[DEBUG] handleSaveMember called');
-    console.log('[DEBUG] memberData.id:', memberData.id);
-    console.log('[DEBUG] editingMember?.id:', editingMember?.id);
-    console.log('[DEBUG] Is this an edit?', !!editingMember && !!memberData.id);
-
     if (!editingMember) {
       // For new members, check for duplicates
       const isDuplicateMember = allMembers.filter(m => m.familyId === selectedFamily.id).some(m => 
@@ -225,8 +219,9 @@ export default function App() {
 
     try {
       // Use memberData.id to determine if this is an update or create
-      const isEdit = !!memberData.id;
-      console.log('[DEBUG] isEdit:', isEdit);
+      // Ensure it's not just an empty string
+      const isEdit = !!(memberData.id && memberData.id.trim().length > 0);
+      console.log('[DEBUG] isEdit:', isEdit, 'memberData.id:', memberData.id);
       
       let memberId = isEdit ? memberData.id : undefined;
       
@@ -235,7 +230,8 @@ export default function App() {
         const oldSpouseId = editingMember?.spouseId;
         const newSpouseId = memberData.spouseId;
 
-        await updateDoc(doc(db, 'families', selectedFamily.id, 'people', editingMember.id), {
+        // Use memberId (from memberData.id) instead of editingMember.id
+        await updateDoc(doc(db, 'families', selectedFamily.id, 'people', memberId), {
           ...dataToSave,
           updatedAt: new Date().toISOString()
         });
@@ -249,7 +245,7 @@ export default function App() {
           }
           if (newSpouseId) {
             await updateDoc(doc(db, 'families', selectedFamily.id, 'people', newSpouseId), {
-              spouseId: editingMember.id,
+              spouseId: memberId,  // Use memberId instead of editingMember.id
               updatedAt: new Date().toISOString()
             });
           }
