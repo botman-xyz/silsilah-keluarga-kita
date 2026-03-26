@@ -5,9 +5,8 @@ service cloud.firestore {
     // =========================================
     // 🔒 DEFAULT DENY (GLOBAL SECURITY)
     // =========================================
-    // TEMPORARILY OPEN FOR TESTING - TODO: Revert to false after testing
     match /{document=**} {
-      allow read, write: if true;
+      allow read, write: if false;
     }
 
     // =========================================
