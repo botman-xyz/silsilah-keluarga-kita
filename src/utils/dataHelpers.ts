@@ -1,11 +1,12 @@
 // Wrapper for data import/export functionality
-// The actual implementation is in src/features/export/ExportService.tsx
+// The actual implementation is in src/infrastructure/services/ExportService.ts
+// Exposed via src/features/export for cleaner API
 import { 
   exportFamilyToJSON, 
   exportAllFamiliesToJSON, 
   importFamilyFromJSON 
-} from '../features/export/ExportService';
-import { Family, Member, UserProfile } from '../types';
+} from '../features/export';
+import { Family, Member, UserProfile } from '../domain/entities';
 import { toast } from 'sonner';
 
 // Export all family data

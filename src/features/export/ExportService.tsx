@@ -1,10 +1,9 @@
-import { collection, addDoc, updateDoc, doc } from 'firebase/firestore';
-import { db } from '../../firebase';
-import { Family, Member } from '../../types';
-import { Timestamp } from 'firebase/firestore';
-import { toast } from 'sonner';
+// UI-specific export functions (CSV, Text reports)
+// Pure presentation logic - no business rules
+
+import { Member, Family } from '../../domain/entities';
 import { calculateAge } from '../../lib/utils';
-import { firebaseExportService } from '../../infrastructure/services/ExportService';
+import { toast } from 'sonner';
 
 /**
  * Export members to CSV format
@@ -101,14 +100,3 @@ Dicetak dari Silsilah Keluarga Kita
   URL.revokeObjectURL(url);
   toast.success('Laporan statistik berhasil diekspor!');
 }
-
-// Re-export JSON functions from infrastructure for convenience
-export { firebaseExportService as exportService };
-
-// Convenience exports that delegate to infrastructure
-export const exportFamilyToJSON = firebaseExportService.exportFamilyToJSON;
-export const exportAllFamiliesToJSON = firebaseExportService.exportAllFamiliesToJSON;
-export const importFamilyFromJSON = firebaseExportService.importFamilyFromJSON;
-export const triggerImportFileInput = firebaseExportService.triggerImportFileInput;
-export const readJSONFile = firebaseExportService.readJSONFile;
-export const handleImport = firebaseExportService.handleImport;
