@@ -43,3 +43,16 @@
     @apply bg-slate-300;
   }
 }
+
+/* Search highlight pulse animation */
+@keyframes pulse {
+  0% {
+    stroke-opacity: 1;
+  }
+  50% {
+    stroke-opacity: 0.5;
+  }
+  100% {
+    stroke-opacity: 1;
+  }
+}

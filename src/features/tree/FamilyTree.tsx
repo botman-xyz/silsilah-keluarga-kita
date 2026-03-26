@@ -437,6 +437,21 @@ export default function FamilyTree({
           return `${birth} ${death ? `— ${death}` : ""}`;
         });
 
+      // Search Highlight - Add glow effect if matches search
+      if (searchTerm && member.name.toLowerCase().includes(searchTerm.toLowerCase())) {
+        card.append("rect")
+          .attr("x", -nodeWidth/2 - 4)
+          .attr("y", -nodeHeight/2 - 4)
+          .attr("width", nodeWidth + 8)
+          .attr("height", nodeHeight + 8)
+          .attr("rx", 16)
+          .attr("fill", "none")
+          .attr("stroke", "#3b82f6")
+          .attr("stroke-width", 3)
+          .attr("class", "search-highlight")
+          .style("animation", "pulse 2s infinite");
+      }
+
       // Status Tag (Bottom)
       const statusTag = card.append("g")
         .attr("transform", `translate(${textX}, ${(isMobile ? 20 : 26) + yOffset})`);
