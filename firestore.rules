@@ -73,7 +73,8 @@ service cloud.firestore {
     }
 
     function canManageMembers(familyId) {
-      return hasRole(familyId, ['owner', 'admin']) || isAdmin();
+      return hasRole(familyId, ['owner', 'admin']) || isAdmin() ||
+        (isAuthenticated() && get(/databases/$(database)/documents/families/$(familyId)).data.ownerId == request.auth.uid);
     }
 
     // =========================================
