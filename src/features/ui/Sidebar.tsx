@@ -1,12 +1,14 @@
 import React from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Plus, Users, Layout, BarChart2, Calendar, Calculator, BookOpen, List, LogOut, Trash2, User, ChevronLeft, ChevronRight, Share2, Search, Edit2, X, Download, FileUp, Scan, Sparkles, RefreshCw, Send, ImageIcon, FileText, ExternalLink, Heart } from 'lucide-react';
+import { Plus, Users, Layout, BarChart2, Calendar, Calculator, BookOpen, List, LogOut, Trash2, User, ChevronLeft, ChevronRight, Share2, Search, Edit2, X, Download, FileUp, Scan, Sparkles, RefreshCw, Send, ImageIcon, FileText, ExternalLink, Heart, Menu } from 'lucide-react';
 import { Family, Member, UserProfile } from '../../types';
 import { toast } from 'sonner';
 
 interface SidebarProps {
   isSidebarCollapsed: boolean;
   setIsSidebarCollapsed: (v: boolean) => void;
+  isMobileOpen?: boolean;
+  onMobileClose?: () => void;
   families: Family[];
   selectedFamily: Family | null;
   setSelectedFamily: (f: Family | null) => void;
@@ -28,6 +30,8 @@ interface SidebarProps {
 export function Sidebar({
   isSidebarCollapsed,
   setIsSidebarCollapsed,
+  isMobileOpen,
+  onMobileClose,
   families,
   selectedFamily,
   setSelectedFamily,
@@ -46,8 +50,8 @@ export function Sidebar({
   onImportJSON
 }: SidebarProps) {
   const sidebarVariants = {
-    expanded: { width: "320px", transition: { type: "spring" as const, stiffness: 300, damping: 30 } },
-    collapsed: { width: "80px", transition: { type: "spring" as const, stiffness: 300, damping: 30 } }
+    expanded: { width: "288px lg:320px", transition: { type: "spring" as const, stiffness: 300, damping: 30 } },
+    collapsed: { width: "0px md:72px lg:80px", transition: { type: "spring" as const, stiffness: 300, damping: 30 } }
   };
 
   const menuItems = [
@@ -64,7 +68,7 @@ export function Sidebar({
       initial={false}
       animate={isSidebarCollapsed ? "collapsed" : "expanded"}
       variants={sidebarVariants}
-      className="bg-slate-900 text-white h-screen flex flex-col sticky top-0 z-50 overflow-hidden shadow-2xl"
+      className="bg-slate-900 text-white h-screen flex flex-col sticky top-0 z-50 overflow-hidden shadow-2xl w-72 lg:w-80"
     >
       <div className="p-6 flex items-center justify-between border-b border-slate-800/50">
         {!isSidebarCollapsed && (

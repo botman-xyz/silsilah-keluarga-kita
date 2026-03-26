@@ -51,6 +51,7 @@ export default function App() {
   const [searchTerm, setSearchTerm] = useState('');
   const [viewMode, setViewMode] = useState<'tree' | 'stats' | 'timeline' | 'calculator' | 'story' | 'list'>('tree');
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
+  const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
   const [isHeaderHidden, setIsHeaderHidden] = useState(false);
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [showKinshipModal, setShowKinshipModal] = useState(false);
@@ -322,35 +323,84 @@ export default function App() {
   return (
     <ErrorBoundary>
       <Toaster position="top-right" richColors />
-      <div className="min-h-screen bg-slate-50 flex flex-col lg:flex-row overflow-hidden">
-        <Sidebar 
-          isSidebarCollapsed={isSidebarCollapsed}
-          setIsSidebarCollapsed={setIsSidebarCollapsed}
-          families={families}
-          selectedFamily={selectedFamily}
-          setSelectedFamily={setSelectedFamily}
-          members={members}
-          extendedMembers={extendedMembers}
-          user={user}
-          onLogout={signOut}
-          onAddFamily={() => setShowFamilyModal(true)}
-          onEditFamily={(f) => {
-            setNewFamilyName(f.name);
-            setShowFamilyModal(true);
-          }}
-          onDeleteFamily={() => setShowDeleteConfirm(true)}
-          onShare={() => setShowShareModal(true)}
-          viewMode={viewMode}
-          setViewMode={setViewMode}
-          onMemberClick={handleViewMember}
-          onCheckDuplicates={checkDuplicates}
-          onImportJSON={() => handleImportJSON(user, () => {})}
-        />
+      <div className="min-h-screen bg-slate-50 flex lg:flex-row overflow-hidden prevent-overflow">
+        {/* Mobile Sidebar Overlay */}
+        {isMobileSidebarOpen && (
+          <div className="fixed inset-0 z-50 md:hidden">
+            {/* Backdrop */}
+            <div 
+              className="absolute inset-0 bg-slate-900/50 backdrop-blur-sm"
+              onClick={() => setIsMobileSidebarOpen(false)}
+            />
+            {/* Drawer */}
+            <motion.div 
+              initial={{ x: "-100%" }}
+              animate={{ x: 0 }}
+              exit={{ x: "-100%" }}
+              transition={{ type: "spring", damping: 25, stiffness: 200 }}
+              className="absolute left-0 top-0 bottom-0 w-72 bg-slate-900 text-white shadow-2xl"
+            >
+              <Sidebar 
+                isSidebarCollapsed={false}
+                setIsSidebarCollapsed={() => {}}
+                families={families}
+                selectedFamily={selectedFamily}
+                setSelectedFamily={(f) => { setSelectedFamily(f); setIsMobileSidebarOpen(false); }}
+                members={members}
+                extendedMembers={extendedMembers}
+                user={user}
+                onLogout={signOut}
+                onAddFamily={() => { setShowFamilyModal(true); setIsMobileSidebarOpen(false); }}
+                onEditFamily={(f) => {
+                  setNewFamilyName(f.name);
+                  setShowFamilyModal(true);
+                  setIsMobileSidebarOpen(false);
+                }}
+                onDeleteFamily={() => setShowDeleteConfirm(true)}
+                onShare={() => { setShowShareModal(true); setIsMobileSidebarOpen(false); }}
+                viewMode={viewMode}
+                setViewMode={(v) => { setViewMode(v); setIsMobileSidebarOpen(false); }}
+                onMemberClick={(m) => { handleViewMember(m); setIsMobileSidebarOpen(false); }}
+                onCheckDuplicates={checkDuplicates}
+                onImportJSON={() => handleImportJSON(user, () => {})}
+              />
+            </motion.div>
+          </div>
+        )}
 
-        <main className="flex-1 flex flex-col h-dvh overflow-auto relative">
+        {/* Desktop Sidebar - visible on md+ */}
+        <div className="hidden md:block">
+          <Sidebar 
+            isSidebarCollapsed={isSidebarCollapsed}
+            setIsSidebarCollapsed={setIsSidebarCollapsed}
+            families={families}
+            selectedFamily={selectedFamily}
+            setSelectedFamily={setSelectedFamily}
+            members={members}
+            extendedMembers={extendedMembers}
+            user={user}
+            onLogout={signOut}
+            onAddFamily={() => setShowFamilyModal(true)}
+            onEditFamily={(f) => {
+              setNewFamilyName(f.name);
+              setShowFamilyModal(true);
+            }}
+            onDeleteFamily={() => setShowDeleteConfirm(true)}
+            onShare={() => setShowShareModal(true)}
+            viewMode={viewMode}
+            setViewMode={setViewMode}
+            onMemberClick={handleViewMember}
+            onCheckDuplicates={checkDuplicates}
+            onImportJSON={() => handleImportJSON(user, () => {})}
+          />
+        </div>
+
+        <main className="flex-1 flex flex-col h-dvh md:h-screen overflow-auto relative">
           <Header 
             isSidebarCollapsed={isSidebarCollapsed}
             setIsSidebarCollapsed={setIsSidebarCollapsed}
+            isMobileSidebarOpen={isMobileSidebarOpen}
+            onMobileMenuToggle={() => setIsMobileSidebarOpen(!isMobileSidebarOpen)}
             isHeaderHidden={isHeaderHidden}
             setIsHeaderHidden={setIsHeaderHidden}
             selectedFamily={selectedFamily}
@@ -384,56 +434,66 @@ export default function App() {
 
         {/* Modals */}
         <AnimatePresence>
-          <FamilyModal
-            isOpen={showFamilyModal}
-            onClose={() => {
-              setShowFamilyModal(false);
-              setNewFamilyName('');
-            }}
-            onSave={handleAddFamily}
-            initialFamilyName={newFamilyName}
-          />
+          {showFamilyModal && (
+            <FamilyModal
+              isOpen={showFamilyModal}
+              onClose={() => {
+                setShowFamilyModal(false);
+                setNewFamilyName('');
+              }}
+              onSave={handleAddFamily}
+              initialFamilyName={newFamilyName}
+            />
+          )}
 
-          <ShareModal
-            isOpen={showShareModal}
-            onClose={() => setShowShareModal(false)}
-            selectedFamily={selectedFamily}
-            user={user}
-          />
+          {showShareModal && (
+            <ShareModal
+              isOpen={showShareModal}
+              onClose={() => setShowShareModal(false)}
+              selectedFamily={selectedFamily}
+              user={user}
+            />
+          )}
 
-          <SearchModal
-            isOpen={isSearchOpen}
-            onClose={() => setIsSearchOpen(false)}
-            searchTerm={searchTerm}
-            setSearchTerm={setSearchTerm}
-            extendedMembers={extendedMembers}
-            onSelectMember={(member) => {
-              setEditingMember(member);
-              setShowMemberModal(true);
-              setIsSearchOpen(false);
-            }}
-          />
+          {isSearchOpen && (
+            <SearchModal
+              isOpen={isSearchOpen}
+              onClose={() => setIsSearchOpen(false)}
+              searchTerm={searchTerm}
+              setSearchTerm={setSearchTerm}
+              extendedMembers={extendedMembers}
+              onSelectMember={(member) => {
+                setEditingMember(member);
+                setShowMemberModal(true);
+                setIsSearchOpen(false);
+              }}
+            />
+          )}
 
-          <MemberDetailModal
-            isOpen={!!selectedMemberForDetail}
-            onClose={() => setSelectedMemberForDetail(null)}
-            member={selectedMemberForDetail}
-            allMembers={allMembers}
-            onEdit={(member) => {
-              setEditingMember(member);
-              setShowMemberModal(true);
-            }}
-          />
+          {selectedMemberForDetail && (
+            <MemberDetailModal
+              isOpen={!!selectedMemberForDetail}
+              onClose={() => setSelectedMemberForDetail(null)}
+              member={selectedMemberForDetail}
+              allMembers={allMembers}
+              onEdit={(member) => {
+                setEditingMember(member);
+                setShowMemberModal(true);
+              }}
+            />
+          )}
 
-          <MemberFormModal
-            isOpen={showMemberModal}
-            onClose={() => setShowMemberModal(false)}
-            onSave={handleSaveMember}
-            editingMember={editingMember}
-            members={members}
-            allMembers={allMembers}
-            families={families}
-          />
+          {showMemberModal && (
+            <MemberFormModal
+              isOpen={showMemberModal}
+              onClose={() => setShowMemberModal(false)}
+              onSave={handleSaveMember}
+              editingMember={editingMember}
+              members={members}
+              allMembers={allMembers}
+              families={families}
+            />
+          )}
 
           {showScanKKModal && (
             <ScanKKModal 
@@ -460,24 +520,28 @@ export default function App() {
             />
           )}
 
-          <HelpModal
-            isOpen={showHelpModal}
-            onClose={() => setShowHelpModal(false)}
-            onExport={() => exportAllData(families, allMembers)}
-            onImport={() => handleImportJSON(user, () => setShowHelpModal(false))}
-            onScan={() => setShowScanKKModal(true)}
-            onDeleteAll={() => deleteAllData(user, families, () => {
-              setShowHelpModal(false);
-              setSelectedFamily(null);
-            })}
-          />
+          {showHelpModal && (
+            <HelpModal
+              isOpen={showHelpModal}
+              onClose={() => setShowHelpModal(false)}
+              onExport={() => exportAllData(families, allMembers)}
+              onImport={() => handleImportJSON(user, () => setShowHelpModal(false))}
+              onScan={() => setShowScanKKModal(true)}
+              onDeleteAll={() => deleteAllData(user, families, () => {
+                setShowHelpModal(false);
+                setSelectedFamily(null);
+              })}
+            />
+          )}
 
-          <DeleteFamilyConfirmModal
-            isOpen={showDeleteConfirm}
-            onClose={() => setShowDeleteConfirm(false)}
-            onConfirm={handleDeleteFamily}
-            familyName={selectedFamily?.name}
-          />
+          {showDeleteConfirm && (
+            <DeleteFamilyConfirmModal
+              isOpen={showDeleteConfirm}
+              onClose={() => setShowDeleteConfirm(false)}
+              onConfirm={handleDeleteFamily}
+              familyName={selectedFamily?.name}
+            />
+          )}
 
           {showKinshipModal && (
             <KinshipDictionaryModal onClose={() => setShowKinshipModal(false)} />

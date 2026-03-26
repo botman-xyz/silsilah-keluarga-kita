@@ -86,5 +86,5 @@ export const MainContent: React.FC<MainContentProps> = ({
     }
   };
 
-  return <div className="flex-1 relative overflow-auto">{renderViewModeContent()}</div>;
+  return <div className="flex-1 relative overflow-auto mobile-scroll">{renderViewModeContent()}</div>;
 };
