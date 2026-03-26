@@ -34,8 +34,10 @@ This project follows Clean Architecture principles with four distinct layers: **
 │  │  │   ├── IFamilyRepository.ts                                        │   │
 │  │  │   ├── IMemberRepository.ts                                        │   │
 │  │  │   └── IAuthRepository.ts                                          │   │
-│  │  ├── valueObjects.ts   - Immutable value types                      │   │
-│  │  └── events.ts          - Domain events                             │   │
+│  │  ├── valueObjects.ts   - Immutable value types                       │   │
+│  │  ├── events.ts          - Domain events                             │   │
+│  │  ├── helpers.ts         - Pure domain functions (14 functions)      │   │
+│  │  └── services/          - Domain services (RelationshipCalculator)  │   │
 │  └──────────────────────────────────────────────────────────────────────┘   │
 ├─────────────────────────────────────────────────────────────────────────────┤
 │                          INFRASTRUCTURE LAYER                               │
@@ -261,3 +263,49 @@ Refactored the large FamilyTree component (679 lines) into a modular structure:
 - `src/features/tree/index.ts` - Re-exports for convenient importing
 
 This improves maintainability by separating concerns: rendering logic, UI controls, and configuration.
+
+---
+
+## Best Practices
+
+### Import Order
+
+When working with this codebase, follow this import order:
+
+```typescript
+// 1. React/External libraries
+import React, { useState } from 'react';
+import { useQuery } from '@tanstack/react-query';
+
+// 2. Domain (preferred - pure business logic)
+import { Member, Family } from './domain/entities';
+import { calculateAge, isValidRelationship } from './domain/helpers';
+import { calculateRelationship } from './domain/services';
+
+// 3. Application (use cases)
+import { familyService, memberService } from './infrastructure';
+
+// 4. Presentation (local hooks/components)
+import { useFamilies } from './presentation/hooks';
+
+// 5. Utils (re-exports)
+import { formatDate } from './lib/utils';
+```
+
+### Layer Rules
+
+| Layer | Can Import | Cannot Import |
+|-------|-----------|---------------|
+| Domain | None (innermost) | Application, Infrastructure, Presentation |
+| Application | Domain | Infrastructure, Presentation |
+| Infrastructure | Domain, Application | Presentation |
+| Presentation | Domain, Application, Infrastructure | None (outermost) |
+
+### File Organization
+
+- **Use `src/domain/`** for pure business logic
+- **Use `src/application/services/`** for use cases
+- **Use `src/infrastructure/`** for external integrations
+- **Use `src/presentation/`** for React hooks/views
+- **Use `src/features/`** for feature-specific UI components
+- **Use `src/lib/utils.ts`** for re-exports from domain
