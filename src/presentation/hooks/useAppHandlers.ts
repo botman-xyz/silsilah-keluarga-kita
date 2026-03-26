@@ -1,5 +1,5 @@
 import { useCallback } from 'react';
-import { Family, Member, UserProfile } from '../../types';
+import { Family, Member, UserProfile } from '../../domain/entities';
 import { isDuplicateMember } from '../../lib/utils';
 import { toast } from 'sonner';
 import { familyService, memberService } from '../../infrastructure/container';
