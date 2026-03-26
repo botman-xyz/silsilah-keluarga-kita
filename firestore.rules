@@ -164,11 +164,22 @@ service cloud.firestore {
       // =========================================
       // 👥 MEMBERS (RBAC)
       // =========================================
-      match /members/{userId} {
+      match /members/{memberUserId} {
 
         allow read: if canRead(familyId);
 
-        allow create, update, delete: if isAuthenticated();
+        // User dapat membuat/update member jika:
+        // 1. Mereka adalah owner/admin/editor family, ATAU
+        // 2. Mereka adalah owner keluarga (cek langsung di family document), ATAU
+        // 3. Mereka mengupdate diri sendiri
+        allow create, update: if isAuthenticated() && (
+          hasRole(familyId, ['owner', 'admin', 'editor']) ||
+          (isAuthenticated() && get(/databases/$(database)/documents/families/$(familyId)).data.ownerId == request.auth.uid) ||
+          memberUserId == request.auth.uid
+        );
+
+        // Hanya owner/admin yang bisa menghapus member
+        allow delete: if hasRole(familyId, ['owner', 'admin']) || isAdmin();
 
       }
 
