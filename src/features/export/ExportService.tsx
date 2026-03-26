@@ -3,25 +3,18 @@ import { db } from '../../firebase';
 import { Family, Member } from '../../types';
 import { Timestamp } from 'firebase/firestore';
 import { toast } from 'sonner';
+import { ExportService as ApplicationExportService } from '../../application/services/ExportService';
+import { familyService, memberService } from '../../infrastructure/container';
+
+// Use application layer export service for shared logic (DRY)
+const appExportService = new ApplicationExportService();
 
 /**
  * Export family data to JSON file
+ * Uses application layer ExportService (DRY - no duplicate logic)
  */
 export function exportFamilyToJSON(family: Family, members: Member[], filename?: string): void {
-  const data = {
-    family,
-    members,
-    exportedAt: new Date().toISOString(),
-    version: '1.0'
-  };
-  
-  const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
-  const url = URL.createObjectURL(blob);
-  const link = document.createElement('a');
-  link.download = filename || `${family.name.replace(/[^a-z0-9]/gi, '-')}-data.json`;
-  link.href = url;
-  link.click();
-  URL.revokeObjectURL(url);
+  appExportService.exportFamilyToJSON(family, members, filename);
 }
 
 /**
@@ -130,22 +123,10 @@ Dicetak dari Silsilah Keluarga Kita
 
 /**
  * Export all families to JSON file
+ * Uses application layer ExportService (DRY - no duplicate logic)
  */
 export function exportAllFamiliesToJSON(families: Family[], allMembers: Member[]): void {
-  const data = {
-    families,
-    members: allMembers,
-    exportedAt: new Date().toISOString(),
-    version: '1.0'
-  };
-  
-  const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
-  const url = URL.createObjectURL(blob);
-  const link = document.createElement('a');
-  link.download = `semua-keluarga-${new Date().toISOString().split('T')[0]}.json`;
-  link.href = url;
-  link.click();
-  URL.revokeObjectURL(url);
+  appExportService.exportAllFamiliesToJSON(families, allMembers);
 }
 
 interface ImportData {
@@ -235,38 +216,18 @@ export async function importFamilyFromJSON(
 
 /**
  * Trigger file input for importing JSON
+ * Uses application layer ExportService (DRY - no duplicate logic)
  */
 export function triggerImportFileInput(onFileSelected: (file: File) => void): void {
-  const input = document.createElement('input');
-  input.type = 'file';
-  input.accept = '.json';
-  input.onchange = (e: Event) => {
-    const target = e.target as HTMLInputElement;
-    const file = target.files?.[0];
-    if (file) {
-      onFileSelected(file);
-    }
-  };
-  input.click();
+  appExportService.triggerImportFileInput(onFileSelected);
 }
 
 /**
  * Read JSON file content
+ * Uses application layer ExportService (DRY - no duplicate logic)
  */
 export function readJSONFile<T>(file: File): Promise<T> {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = (event) => {
-      try {
-        const data = JSON.parse(event.target?.result as string);
-        resolve(data);
-      } catch (error) {
-        reject(new Error('Gagal membaca file JSON.'));
-      }
-    };
-    reader.onerror = () => reject(new Error('Gagal membaca file.'));
-    reader.readAsText(file);
-  });
+  return appExportService.readJSONFile<T>(file);
 }
 
 /**

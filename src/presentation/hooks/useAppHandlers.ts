@@ -2,16 +2,7 @@ import { useCallback } from 'react';
 import { Family, Member, UserProfile } from '../../types';
 import { isDuplicateMember } from '../../lib/utils';
 import { toast } from 'sonner';
-import { FamilyService } from '../../application/services/FamilyService';
-import { MemberService } from '../../application/services/MemberService';
-import { FirebaseFamilyRepository } from '../../infrastructure/repositories/FirebaseFamilyRepository';
-import { FirebaseMemberRepository } from '../../infrastructure/repositories/FirebaseMemberRepository';
-
-// Initialize services with repositories (Clean Architecture: Application layer depends on Infrastructure)
-const familyRepository = new FirebaseFamilyRepository();
-const memberRepository = new FirebaseMemberRepository();
-const familyService = new FamilyService(familyRepository);
-const memberService = new MemberService(memberRepository);
+import { familyService, memberService } from '../../infrastructure/container';
 
 interface UseAppHandlersProps {
   user: UserProfile | null;
