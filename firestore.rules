@@ -104,7 +104,9 @@ service cloud.firestore {
         'name', 'gender', 'createdBy', 'updatedAt',
         'maritalStatus', 'birthDate', 'deathDate',
         'photoUrl', 'fatherId', 'motherId',
-        'spouseIds', 'bio'
+        'spouseId', 'spouseIds', 'isAdoptedChild',
+        'externalSpouseName', 'externalFamilyId',
+        'bio', 'media', 'familyId'
       ];
 
       return data.keys().hasOnly(allowed) &&
