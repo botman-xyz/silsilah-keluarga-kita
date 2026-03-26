@@ -2,6 +2,7 @@ import React from 'react';
 import { Member } from '../../types';
 import { PieChart, Pie, Cell, ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, Legend, LineChart, Line, CartesianGrid } from 'recharts';
 import { Users, Baby, Heart, Calendar, TrendingUp, History, Layers } from 'lucide-react';
+import { calculateAge } from '../../lib/utils';
 
 interface FamilyStatsProps {
   members: Member[];
@@ -14,19 +15,6 @@ export default function FamilyStats({ members }: FamilyStatsProps) {
     { name: 'Wanita', value: members.filter(m => m.gender === 'female').length, color: '#ec4899' },
     { name: 'Lainnya', value: members.filter(m => m.gender === 'other').length, color: '#94a3b8' },
   ].filter(d => d.value > 0);
-
-  // Age Calculation (Simple)
-  const calculateAge = (birthDate?: string) => {
-    if (!birthDate) return null;
-    const birth = new Date(birthDate);
-    const today = new Date();
-    let age = today.getFullYear() - birth.getFullYear();
-    const m = today.getMonth() - birth.getMonth();
-    if (m < 0 || (m === 0 && today.getDate() < birth.getDate())) {
-      age--;
-    }
-    return age;
-  };
 
   const ages = members.map(m => calculateAge(m.birthDate)).filter(a => a !== null) as number[];
   const ageGroups = [

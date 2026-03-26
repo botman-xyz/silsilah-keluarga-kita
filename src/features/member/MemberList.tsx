@@ -1,6 +1,7 @@
 import React from 'react';
 import { Member } from '../../types';
 import { Users } from 'lucide-react';
+import { calculateAge, formatDate } from '../../lib/utils';
 
 interface MemberListProps {
   members: Member[];
@@ -17,18 +18,6 @@ export default function MemberList({ members, onSelectMember }: MemberListProps)
   const sortedMembers = [...members].sort((a, b) => {
     return a.name.localeCompare(b.name);
   });
-
-  const calculateAge = (birthDate?: string, deathDate?: string) => {
-    if (!birthDate) return null;
-    const birth = new Date(birthDate);
-    const end = deathDate ? new Date(deathDate) : new Date();
-    let age = end.getFullYear() - birth.getFullYear();
-    const monthDiff = end.getMonth() - birth.getMonth();
-    if (monthDiff < 0 || (monthDiff === 0 && end.getDate() < birth.getDate())) {
-      age--;
-    }
-    return age;
-  };
 
   if (members.length === 0) {
     return (
@@ -75,8 +64,8 @@ export default function MemberList({ members, onSelectMember }: MemberListProps)
                   )}
                   {member.birthDate && (
                     <div className="text-xs text-slate-400">
-                      Lahir: {new Date(member.birthDate).toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })}
-                      {member.deathDate && ` • Wafat: ${new Date(member.deathDate).toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })}`}
+                      Lahir: {formatDate(member.birthDate)}
+                      {member.deathDate && ` • Wafat: ${formatDate(member.deathDate)}`}
                     </div>
                   )}
                 </div>

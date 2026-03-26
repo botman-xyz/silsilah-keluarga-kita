@@ -1,6 +1,7 @@
 import React from 'react';
 import { Member } from '../../types';
 import { Heart, ImageIcon, FileText, ExternalLink } from 'lucide-react';
+import { calculateAge, formatDate } from '../../lib/utils';
 
 interface MemberDetailViewProps {
   member: Member;
@@ -17,18 +18,6 @@ export function MemberDetailView({ member, allMembers }: MemberDetailViewProps) 
     .map(id => allMembers.find(m => m.id === id))
     .filter(Boolean) as Member[];
 
-  // Calculate age
-  const calculateAge = (birthDate?: string, deathDate?: string) => {
-    if (!birthDate) return null;
-    const birth = new Date(birthDate);
-    const end = deathDate ? new Date(deathDate) : new Date();
-    let age = end.getFullYear() - birth.getFullYear();
-    const monthDiff = end.getMonth() - birth.getMonth();
-    if (monthDiff < 0 || (monthDiff === 0 && end.getDate() < birth.getDate())) {
-      age--;
-    }
-    return age;
-  };
   const age = calculateAge(member.birthDate, member.deathDate);
 
   return (
