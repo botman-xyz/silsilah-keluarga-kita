@@ -65,6 +65,9 @@ export default function MemberList({ members, onSelectMember }: MemberListProps)
                     {member.gender === 'male' ? 'Laki-laki' : member.gender === 'female' ? 'Perempuan' : 'Lainnya'}
                     {age !== null && ` • ${age} tahun`}
                   </div>
+                  {member.isAdoptedChild && (
+                    <div className="text-xs text-amber-600 font-medium">Anak Angkat</div>
+                  )}
                   {member.birthDate && (
                     <div className="text-xs text-slate-400">
                       Lahir: {new Date(member.birthDate).toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })}

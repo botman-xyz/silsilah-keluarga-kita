@@ -25,6 +25,8 @@ export interface Member {
   photoUrl?: string;
   fatherId?: string;
   motherId?: string;
+  // Relationship type to parents
+  isAdoptedChild?: boolean;
   spouseId?: string;
   spouseIds?: string[];
   externalSpouseName?: string;
