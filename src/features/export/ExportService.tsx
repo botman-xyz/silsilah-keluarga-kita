@@ -3,22 +3,12 @@ import { db } from '../../firebase';
 import { Family, Member } from '../../types';
 import { Timestamp } from 'firebase/firestore';
 import { toast } from 'sonner';
-import { ExportService as ApplicationExportService } from '../../application/services/ExportService';
-import { familyService, memberService } from '../../infrastructure/container';
-
-// Use application layer export service for shared logic (DRY)
-const appExportService = new ApplicationExportService();
-
-/**
- * Export family data to JSON file
- * Uses application layer ExportService (DRY - no duplicate logic)
- */
-export function exportFamilyToJSON(family: Family, members: Member[], filename?: string): void {
-  appExportService.exportFamilyToJSON(family, members, filename);
-}
+import { calculateAge } from '../../lib/utils';
+import { firebaseExportService } from '../../infrastructure/services/ExportService';
 
 /**
  * Export members to CSV format
+ * Uses shared calculateAge from lib/utils (DRY)
  */
 export function exportMembersToCSV(members: Member[], familyName: string): void {
   const headers = ['Nama', 'Jenis Kelamin', 'Tanggal Lahir', 'Tanggal Wafat', 'Status Pernikahan', 'Ayah', 'Ibu', 'Pasangan', 'Bio'];
@@ -58,19 +48,10 @@ export function exportMembersToCSV(members: Member[], familyName: string): void 
 
 /**
  * Export family statistics to text report
+ * Uses shared calculateAge from lib/utils (DRY)
  */
 export function exportStatsToText(family: Family, members: Member[]): void {
-  const calculateAge = (birthDate?: string) => {
-    if (!birthDate) return null;
-    const birth = new Date(birthDate);
-    const today = new Date();
-    let age = today.getFullYear() - birth.getFullYear();
-    const m = today.getMonth() - birth.getMonth();
-    if (m < 0 || (m === 0 && today.getDate() < birth.getDate())) age--;
-    return age;
-  };
-  
-  const ages = members.map(m => calculateAge(m.birthDate)).filter(a => a !== null) as number[];
+  const ages = members.map(m => calculateAge(m.birthDate, m.deathDate)).filter(a => a !== null) as number[];
   const avgAge = ages.length > 0 ? Math.round(ages.reduce((a, b) => a + b, 0) / ages.length) : 0;
   const maxAge = ages.length > 0 ? Math.max(...ages) : 0;
   const minAge = ages.length > 0 ? Math.min(...ages) : 0;
@@ -105,7 +86,7 @@ Lajang: ${single}
 
 DAFTAR ANGGOTA
 --------------
-${members.map(m => `- ${m.name} (${m.gender === 'male' ? 'L' : 'P'}, ${calculateAge(m.birthDate) || '?'} th)`).join('\n')}
+${members.map(m => `- ${m.name} (${m.gender === 'male' ? 'L' : 'P'}, ${calculateAge(m.birthDate, m.deathDate) || '?'} th)`).join('\n')}
 
 ---
 Dicetak dari Silsilah Keluarga Kita
@@ -121,135 +102,13 @@ Dicetak dari Silsilah Keluarga Kita
   toast.success('Laporan statistik berhasil diekspor!');
 }
 
-/**
- * Export all families to JSON file
- * Uses application layer ExportService (DRY - no duplicate logic)
- */
-export function exportAllFamiliesToJSON(families: Family[], allMembers: Member[]): void {
-  appExportService.exportAllFamiliesToJSON(families, allMembers);
-}
+// Re-export JSON functions from infrastructure for convenience
+export { firebaseExportService as exportService };
 
-interface ImportData {
-  family?: Family;
-  families?: Family[];
-  members?: Member[];
-  exportedAt?: string;
-  version?: string;
-}
-
-/**
- * Import family data from JSON file
- */
-export async function importFamilyFromJSON(
-  data: ImportData,
-  userUid: string | undefined
-): Promise<{ importedFamilies: number; importedMembers: number }> {
-  // Handle both single family export and all families export
-  const familiesToImport = data.family ? [data.family] : (data.families || []);
-  const allMembersToImport = data.members || [];
-
-  if (familiesToImport.length === 0) {
-    throw new Error('Format file tidak valid: Tidak ada data keluarga ditemukan.');
-  }
-
-  let importedFamilies = 0;
-  let importedMembers = 0;
-
-  for (const famData of familiesToImport) {
-    // Create new family
-    const familyRef = await addDoc(collection(db, 'families'), {
-      name: `${famData.name} (Import)`,
-      ownerId: userUid,
-      collaborators: [],
-      createdAt: Timestamp.now()
-    });
-
-    // Filter members for this family
-    const familyMembers = allMembersToImport.filter((m) => m.familyId === famData.id || !m.familyId);
-
-    // Map old IDs to new IDs
-    const idMap: { [key: string]: string } = {};
-    
-    // First pass: Create members and get new IDs
-    const createPromises = familyMembers.map(async (m) => {
-      const { id, ...memberData } = m;
-      // Remove old familyId if it exists, we'll use the new one
-      delete memberData.familyId;
-      
-      const newMemberRef = await addDoc(collection(db, 'families', familyRef.id, 'people'), {
-        ...memberData,
-        familyId: familyRef.id,
-        updatedAt: new Date().toISOString()
-      });
-      idMap[id] = newMemberRef.id;
-      return { oldId: id, newId: newMemberRef.id };
-    });
-
-    await Promise.all(createPromises);
-
-    // Second pass: Update relationships with new IDs
-    const updatePromises = familyMembers.map(async (m) => {
-      const newId = idMap[m.id];
-      const updates: Record<string, unknown> = {};
-      if (m.fatherId && idMap[m.fatherId]) updates.fatherId = idMap[m.fatherId];
-      if (m.motherId && idMap[m.motherId]) updates.motherId = idMap[m.motherId];
-      if (m.spouseId && idMap[m.spouseId]) updates.spouseId = idMap[m.spouseId];
-      
-      // Handle spouseIds array if it exists
-      if (m.spouseIds && Array.isArray(m.spouseIds)) {
-        updates.spouseIds = m.spouseIds.map((id: string) => idMap[id] || id).filter(Boolean);
-      }
-
-      if (Object.keys(updates).length > 0) {
-        await updateDoc(doc(db, 'families', familyRef.id, 'people', newId), updates);
-      }
-    });
-
-    await Promise.all(updatePromises);
-    
-    importedFamilies++;
-    importedMembers += familyMembers.length;
-  }
-
-  return { importedFamilies, importedMembers };
-}
-
-/**
- * Trigger file input for importing JSON
- * Uses application layer ExportService (DRY - no duplicate logic)
- */
-export function triggerImportFileInput(onFileSelected: (file: File) => void): void {
-  appExportService.triggerImportFileInput(onFileSelected);
-}
-
-/**
- * Read JSON file content
- * Uses application layer ExportService (DRY - no duplicate logic)
- */
-export function readJSONFile<T>(file: File): Promise<T> {
-  return appExportService.readJSONFile<T>(file);
-}
-
-/**
- * Complete import flow
- */
-export async function handleImport(
-  file: File,
-  userUid: string | undefined
-): Promise<{ importedFamilies: number; importedMembers: number }> {
-  const toastId = toast.loading('Mengimpor data...');
-  
-  try {
-    const data = await readJSONFile<ImportData>(file);
-    const result = await importFamilyFromJSON(data, userUid);
-    toast.success(
-      `Berhasil mengimpor ${result.importedFamilies} keluarga dengan ${result.importedMembers} anggota!`,
-      { id: toastId }
-    );
-    return result;
-  } catch (error) {
-    const message = error instanceof Error ? error.message : 'Gagal mengimpor data.';
-    toast.error(message, { id: toastId });
-    throw error;
-  }
-}
+// Convenience exports that delegate to infrastructure
+export const exportFamilyToJSON = firebaseExportService.exportFamilyToJSON;
+export const exportAllFamiliesToJSON = firebaseExportService.exportAllFamiliesToJSON;
+export const importFamilyFromJSON = firebaseExportService.importFamilyFromJSON;
+export const triggerImportFileInput = firebaseExportService.triggerImportFileInput;
+export const readJSONFile = firebaseExportService.readJSONFile;
+export const handleImport = firebaseExportService.handleImport;
