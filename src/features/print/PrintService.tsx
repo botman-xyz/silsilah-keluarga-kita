@@ -4,13 +4,21 @@
  */
 
 import { toast } from 'sonner';
-import { prepareSvgForExport, serializeSvg, isLandscapeOrientation } from './printUtils';
+import { prepareSvgForExport, serializeSvg } from './printUtils';
+import { generatePrintTemplate, openPrintWindow, createDownloadLink, svgToBlob } from './printTemplates';
+
+/**
+ * Gets the SVG element from the DOM
+ */
+const getSvgElement = (): SVGSVGElement | null => {
+  return document.querySelector('.family-tree-svg') as SVGSVGElement;
+};
 
 /**
  * Opens a print window with the prepared SVG
  */
 export async function handlePrint(familyName?: string): Promise<void> {
-  const svg = document.querySelector('.family-tree-svg') as SVGSVGElement;
+  const svg = getSvgElement();
   if (!svg) {
     toast.error('Silsilah keluarga tidak ditemukan.');
     return;
@@ -27,121 +35,21 @@ export async function handlePrint(familyName?: string): Promise<void> {
     }
     
     const { clone, width, height } = result;
-    const isLandscape = isLandscapeOrientation(width, height);
     const svgData = serializeSvg(clone);
-    const printWindow = window.open('', '_blank');
+    
+    const htmlContent = generatePrintTemplate({
+      svgData,
+      familyName,
+      width,
+      height
+    });
+    
+    const printWindow = openPrintWindow(htmlContent);
     if (!printWindow) {
       toast.error('Gagal membuka jendela cetak. Pastikan pop-up diizinkan.', { id: toastId });
       return;
     }
-
-    printWindow.document.write(`
-      <html>
-        <head>
-          <title>Cetak Silsilah - ${familyName || 'Keluarga'}</title>
-          <style>
-            @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;900&display=swap');
-            
-            @page {
-              size: ${isLandscape ? 'landscape' : 'portrait'};
-              margin: 0;
-            }
-
-            body { 
-              margin: 0; 
-              padding: 0;
-              display: flex; 
-              justify-content: center; 
-              align-items: center; 
-              min-height: 100vh; 
-              font-family: 'Inter', sans-serif; 
-              background: #f1f5f9; 
-              -webkit-print-color-adjust: exact;
-              print-color-adjust: exact;
-            }
-
-            .container {
-              width: 100%;
-              height: 100%;
-              display: flex;
-              justify-content: center;
-              align-items: center;
-              padding: 40px;
-              box-sizing: border-box;
-            }
-
-            svg { 
-              width: auto;
-              height: auto;
-              max-width: 95%; 
-              max-height: 85vh; 
-              background: white;
-              border-radius: 24px;
-              box-shadow: 0 25px 50px -12px rgb(0 0 0 / 0.1);
-            }
-
-            @media print {
-              .no-print { display: none; }
-              body { background: white; }
-              .container { padding: 0; }
-              svg { 
-                filter: none; 
-                width: 100vw;
-                height: 100vh;
-                max-width: 100vw; 
-                max-height: 100vh; 
-                box-shadow: none;
-                border-radius: 0;
-              }
-            }
-
-            .controls { 
-              position: fixed; 
-              top: 20px; 
-              left: 50%;
-              transform: translateX(-50%);
-              z-index: 100; 
-              background: white/80;
-              backdrop-blur: md;
-              padding: 12px 24px;
-              border-radius: 20px;
-              box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.1);
-              display: flex;
-              gap: 12px;
-              align-items: center;
-            }
-
-            .hint {
-              font-size: 12px;
-              color: #64748b;
-              font-weight: 500;
-            }
-
-            button { 
-              padding: 10px 20px; 
-              background: #2563eb; 
-              color: white; 
-              border: none; 
-              border-radius: 12px; 
-              cursor: pointer; 
-              font-weight: bold; 
-              transition: all 0.2s;
-            }
-            button:hover { background: #1d4ed8; }
-          </style>
-        </head>
-        <body>
-          <div class="controls no-print">
-            <div class="hint">Tips: Pilih "Save as PDF" dan orientasi "${isLandscape ? 'Landscape' : 'Portrait'}"</div>
-            <button onclick="window.print()">Cetak / Simpan PDF</button>
-          </div>
-          <div class="container">
-            ${svgData}
-          </div>
-        </body>
-      </html>
-    `);
-    printWindow.document.close();
+    
     toast.success('Dokumen cetak siap!', { id: toastId });
   } catch (error) {
     console.error('Print error:', error);
@@ -153,7 +61,7 @@ export async function handlePrint(familyName?: string): Promise<void> {
  * Downloads the SVG as an image file
  */
 export async function handleDownload(format: 'svg' | 'png' = 'svg'): Promise<void> {
-  const svg = document.querySelector('.family-tree-svg') as SVGSVGElement;
+  const svg = getSvgElement();
   if (!svg) {
     toast.error('Silsilah keluarga tidak ditemukan.');
     return;
@@ -173,14 +81,8 @@ export async function handleDownload(format: 'svg' | 'png' = 'svg'): Promise<voi
     const svgData = serializeSvg(clone);
     
     if (format === 'svg') {
-      // Download as SVG
-      const blob = new Blob([svgData], { type: 'image/svg+xml' });
-      const url = URL.createObjectURL(blob);
-      const link = document.createElement('a');
-      link.href = url;
-      link.download = 'silsilah-keluarga.svg';
-      link.click();
-      URL.revokeObjectURL(url);
+      const blob = svgToBlob(svgData, 'image/svg+xml');
+      createDownloadLink(blob, 'silsilah-keluarga.svg');
       toast.success('Silsilah berhasil diunduh!', { id: toastId });
     } else {
       // Download as PNG
@@ -195,7 +97,7 @@ export async function handleDownload(format: 'svg' | 'png' = 'svg'): Promise<voi
       }
       
       const img = new Image();
-      const svgBlob = new Blob([svgData], { type: 'image/svg+xml;charset=utf-8' });
+      const svgBlob = svgToBlob(svgData, 'image/svg+xml');
       const url = URL.createObjectURL(svgBlob);
       
       img.onload = () => {
@@ -205,11 +107,7 @@ export async function handleDownload(format: 'svg' | 'png' = 'svg'): Promise<voi
         
         canvas.toBlob((blob) => {
           if (blob) {
-            const link = document.createElement('a');
-            link.href = URL.createObjectURL(blob);
-            link.download = 'silsilah-keluarga.png';
-            link.click();
-            URL.revokeObjectURL(link.href);
+            createDownloadLink(blob, 'silsilah-keluarga.png');
             toast.success('Silsilah berhasil diunduh!', { id: toastId });
           } else {
             toast.error('Gagal mengonversi ke PNG.', { id: toastId });
