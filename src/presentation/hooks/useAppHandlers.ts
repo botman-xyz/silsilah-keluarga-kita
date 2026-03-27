@@ -118,22 +118,14 @@ export function useAppHandlers({
   const handleDeleteFamily = useCallback(async () => {
     if (!selectedFamily) return;
     try {
-      // Get all members first
-      const members = await memberService.getMembersByFamily(selectedFamily.id);
-      
-      // Delete all members
-      for (const member of members) {
-        await memberService.deleteMember(selectedFamily.id, member.id);
-      }
-      
-      // Delete the family
+      await deleteAllFamilyMembers(selectedFamily.id);
       await familyService.deleteFamily(selectedFamily.id);
-      
+
       setSelectedFamily(null);
       setShowDeleteConfirm(false);
-      toast.success('Keluarga berhasil dihapus.');
+      showFamilyToast('delete', true);
     } catch (e) {
-      toast.error('Gagal menghapus keluarga.');
+      showFamilyToast('delete', false);
     }
   }, [selectedFamily, setSelectedFamily, setShowDeleteConfirm]);
 
@@ -165,22 +157,7 @@ export function useAppHandlers({
    * Quick add a relative (child/parent) from an existing member
    */
   const handleQuickAddRelative = useCallback((member: Member) => {
-    const newMember: Partial<Member> = {
-      familyId: selectedFamily?.id,
-    };
-
-    if (member.gender === 'male') {
-      newMember.fatherId = member.id;
-      if (member.spouseId) {
-        newMember.motherId = member.spouseId;
-      }
-    } else if (member.gender === 'female') {
-      newMember.motherId = member.id;
-      if (member.spouseId) {
-        newMember.fatherId = member.spouseId;
-      }
-    }
-
+    const newMember = buildQuickAddRelative(member, selectedFamily?.id);
     setEditingMember(newMember as Member);
     setShowMemberModal(true);
   }, [selectedFamily, setEditingMember, setShowMemberModal]);
@@ -324,44 +301,12 @@ export function useAppHandlers({
   const checkDuplicates = useCallback(() => {
     if (!user) return;
 
-    const ownedFamilies = families.filter(f => f.ownerId === user.uid);
-    const familyNames = new Set<string>();
-    const duplicateFamilies: string[] = [];
+    const duplicateFamilies = findDuplicateFamilies(families, user.uid);
+    const duplicateMembers = selectedFamily
+      ? findDuplicateMembers(allMembers.filter(m => m.familyId === selectedFamily.id))
+      : [];
 
-    ownedFamilies.forEach(f => {
-      const name = f.name.toLowerCase().trim();
-      if (familyNames.has(name)) {
-        duplicateFamilies.push(f.name);
-      }
-      familyNames.add(name);
-    });
-
-    const duplicateMembers: string[] = [];
-    if (selectedFamily) {
-      const familyMembers = allMembers.filter(m => m.familyId === selectedFamily.id);
-      const memberKeys = new Set<string>();
-
-      familyMembers.forEach(m => {
-        const key = `${m.name.toLowerCase().trim()}|${m.birthDate || ''}`;
-        if (memberKeys.has(key)) {
-          duplicateMembers.push(m.name);
-        }
-        memberKeys.add(key);
-      });
-    }
-
-    if (duplicateFamilies.length === 0 && duplicateMembers.length === 0) {
-      toast.info('Tidak ditemukan duplikasi keluarga atau anggota.');
-    } else {
-      let message = '';
-      if (duplicateFamilies.length > 0) {
-        message += `Duplikasi keluarga: ${[...new Set(duplicateFamilies)].join(', ')}. `;
-      }
-      if (duplicateMembers.length > 0) {
-        message += `Duplikasi anggota di keluarga ini: ${[...new Set(duplicateMembers)].join(', ')}.`;
-      }
-      toast.warning(message, { duration: 10000 });
-    }
+    showDuplicateResults(duplicateFamilies, duplicateMembers);
   }, [user, families, selectedFamily, allMembers]);
 
   return {
