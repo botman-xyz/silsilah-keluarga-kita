@@ -44,7 +44,7 @@ export const ShareModal: React.FC<ShareModalProps> = ({ isOpen, onClose, selecte
             animate={{ y: 0, opacity: 1 }}
             exit={{ y: "100%", opacity: 0 }}
             transition={{ type: "spring", damping: 25, stiffness: 200 }}
-            className="bg-white rounded-t-3xl sm:rounded-3xl shadow-2xl w-full sm:max-w-md sm:max-h-[100vh] p-8"
+            className="bg-white rounded-t-3xl sm:rounded-3xl shadow-2xl w-full sm:max-w-md sm:max-h-screen p-8"
           >
             <div className="flex items-center justify-between mb-6">
               <h3 className="text-xl font-bold text-slate-900">Bagikan Keluarga</h3>

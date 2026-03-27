@@ -31,7 +31,7 @@ export const FamilyModal: React.FC<FamilyModalProps> = ({ isOpen, onClose, onSav
             initial={{ scale: 0.9, opacity: 0 }}
             animate={{ scale: 1, opacity: 1 }}
             exit={{ scale: 0.9, opacity: 0 }}
-            className="bg-white rounded-none sm:rounded-3xl shadow-2xl w-full h-full sm:h-auto sm:max-h-[100vh] sm:max-w-md p-8"
+            className="bg-white rounded-none sm:rounded-3xl shadow-2xl w-full h-full sm:h-auto sm:max-h-screen sm:max-w-md p-8"
           >
             <div className="flex items-center justify-between mb-6">
               <h3 className="text-xl font-bold text-slate-900">{initialFamilyName ? 'Edit Keluarga' : 'Keluarga Baru'}</h3>

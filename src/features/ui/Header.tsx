@@ -97,7 +97,7 @@ export function Header({
           className="p-3 hover:bg-slate-100 rounded-2xl text-slate-500 transition-all active:scale-95"
           title="Cari Anggota"
         >
-          <Search className="w-5 h-5 lg:w-6 h-6" />
+          <Search className="w-5 h-5 lg:w-6" />
         </button>
         
         {selectedFamily && (
@@ -107,7 +107,7 @@ export function Header({
               className="p-3 hover:bg-blue-50 rounded-2xl text-blue-600 transition-all active:scale-95 hidden sm:block"
               title="Bagikan"
             >
-              <Share2 className="w-5 h-5 lg:w-6 h-6" />
+              <Share2 className="w-5 h-5 lg:w-6" />
             </button>
             {onPrint && (
               <button 
@@ -115,14 +115,14 @@ export function Header({
                 className="p-3 hover:bg-slate-100 rounded-2xl text-slate-500 transition-all active:scale-95"
                 title="Cetak / Simpan PDF"
               >
-                <Printer className="w-5 h-5 lg:w-6 h-6" />
+                <Printer className="w-5 h-5 lg:w-6" />
               </button>
             )}
             <button 
               onClick={onAddMember}
               className="flex items-center gap-2 px-4 lg:px-6 py-3 lg:py-4 bg-blue-600 text-white rounded-2xl font-bold text-xs lg:text-sm hover:bg-blue-700 shadow-lg shadow-blue-100 transition-all active:scale-95"
             >
-              <Plus className="w-4 h-4 lg:w-5 h-5" /> <span className="hidden sm:inline">Tambah Anggota</span>
+              <Plus className="w-4 h-4 lg:w-5" /> <span className="hidden sm:inline">Tambah Anggota</span>
             </button>
           </>
         )}
@@ -132,7 +132,7 @@ export function Header({
           className="p-3 hover:bg-slate-100 rounded-2xl text-slate-400 transition-all active:scale-95"
           title="Bantuan"
         >
-          <HelpCircle className="w-5 h-5 lg:w-6 h-6" />
+          <HelpCircle className="w-5 h-5 lg:w-6" />
         </button>
 
         <button 
