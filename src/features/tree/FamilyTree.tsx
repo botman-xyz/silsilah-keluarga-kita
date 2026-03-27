@@ -2,7 +2,9 @@ import React, { useEffect, useRef, useState } from 'react';
 import * as d3 from 'd3';
 import { Member } from '../../domain/entities';
 import { ZoomControls } from './ZoomControls';
-import { getLayoutConfig, calculateFitScale } from './treeLayout';
+import { getLayoutConfig, getScaleConstraints } from './treeLayout';
+import { buildTreeHierarchy } from './treeBuilder';
+import { renderMemberCard } from './treeRenderer';
 import { ZoomIn, ZoomOut, Maximize, MousePointer2, Eye, EyeOff } from 'lucide-react';
 
 interface FamilyTreeProps {
@@ -552,29 +554,24 @@ export default function FamilyTree({
 
     // Initial Zoom to fit
     const bounds = g.node()?.getBBox();
-    if (bounds && bounds.width > 0) {
+    if (bounds && bounds.width > 0 && bounds.height > 0) {
       const fullWidth = width;
       const fullHeight = height;
+      
+      // Initial zoom at 70% for better overview
+      const initialScale = 0.7;
+      
+      // Center the tree
       const midX = bounds.x + bounds.width / 2;
       const midY = bounds.y + bounds.height / 2;
-      
-      // Calculate scale to fit with padding
-      let scale = 0.9 / Math.max(bounds.width / fullWidth, bounds.height / fullHeight);
-      
-      // Constraints for readability
-      if (isMobile) {
-        // On mobile, ensure it's not too tiny, even if it cuts off some parts (user can pan)
-        scale = Math.max(0.4, Math.min(scale, 1.2));
-      } else {
-        // On desktop, we can be a bit more flexible but still cap the max zoom
-        scale = Math.max(0.2, Math.min(scale, 1.1));
-      }
-      
-      const translate = [fullWidth / 2 - scale * midX, fullHeight / 2 - scale * midY];
+      const translate = [fullWidth / 2 - initialScale * midX, fullHeight / 2 - initialScale * midY];
 
-      svg.transition()
-        .duration(750)
-        .call(zoom.transform, d3.zoomIdentity.translate(translate[0], translate[1]).scale(scale));
+      // Apply transform immediately for better UX
+      svg.call(zoom.transform, d3.zoomIdentity.translate(translate[0], translate[1]).scale(initialScale));
+      setZoomLevel(initialScale);
+    } else {
+      // Fallback: center at 70% zoom if no bounds available
+      svg.call(zoom.transform, d3.zoomIdentity.translate(width / 2, height / 2).scale(0.7));
     }
 
   }, [members, onSelectMember, searchTerm, dimensions]);
