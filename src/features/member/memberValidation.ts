@@ -98,6 +98,7 @@ export function getDefaultFormData(): Partial<Member> {
     spouseId: '',
     spouseIds: [],
     externalSpouseName: '',
+    marriageDate: '',
     maritalStatus: 'single',
     createdBy: '',
     updatedAt: ''
@@ -118,6 +119,7 @@ export function mapFormToMember(formData: Partial<Member>, existingMember?: Memb
     externalSpouseName: formData.externalSpouseName || undefined,
     birthDate: formData.birthDate || undefined,
     deathDate: formData.deathDate || undefined,
+    ...(formData.marriageDate ? { marriageDate: formData.marriageDate } : {}),
     photoUrl: formData.photoUrl || undefined,
     bio: formData.bio || undefined
   };

@@ -51,14 +51,21 @@ export function useAppHandlers({
    * Add a new family or update existing family
    * If editingFamily is provided, it updates; otherwise creates new
    */
-  const handleAddFamily = useCallback(async (nameOverride?: string, editingFamily?: Family | null) => {
+  const handleAddFamily = useCallback(async (
+    nameOverride?: string, 
+    editingFamily?: Family | null,
+    kartuKeluargaUrl?: string
+  ) => {
     const nameToUse = nameOverride;
     if (!user || !nameToUse) return;
     
     // If editing existing family, update it
     if (editingFamily) {
       try {
-        await familyService.updateFamily(editingFamily.id, { name: nameToUse.trim() });
+        await familyService.updateFamily(editingFamily.id, { 
+          name: nameToUse.trim(),
+          ...(kartuKeluargaUrl ? { kartuKeluargaUrl } : {})
+        });
         
         setNewFamilyName('');
         setEditingFamily(null);
@@ -84,7 +91,8 @@ export function useAppHandlers({
     try {
       await familyService.createFamily({ 
         name: nameToUse.trim(), 
-        ownerId: user.uid 
+        ownerId: user.uid,
+        ...(kartuKeluargaUrl ? { kartuKeluargaUrl } : {})
       });
       
       setNewFamilyName('');
@@ -209,19 +217,22 @@ export function useAppHandlers({
           if (oldSpouseId) {
             await memberService.updateMember(selectedFamily.id, oldSpouseId, {
               spouseId: '',
+              maritalStatus: 'single',
               updatedAt: new Date().toISOString()
             });
           }
           if (newSpouseId) {
             await memberService.updateMember(selectedFamily.id, newSpouseId, {
               spouseId: memberData.id,
+              maritalStatus: 'married',
+              ...(memberData.marriageDate ? { marriageDate: memberData.marriageDate } : {}),
               updatedAt: new Date().toISOString()
             });
           }
         }
       } else {
         // Create new member - extract required fields from memberData
-        const { id, name, gender, birthDate, fatherId, motherId, spouseId, maritalStatus, bio, photoUrl } = memberData;
+        const { id, name, gender, birthDate, fatherId, motherId, spouseId, maritalStatus, marriageDate, bio, photoUrl } = memberData;
         
         const createdMember = await memberService.createMember(selectedFamily.id, {
           name: name || '',
@@ -232,16 +243,19 @@ export function useAppHandlers({
           motherId,
           spouseId,
           maritalStatus,
+          ...(marriageDate ? { marriageDate } : {}),
           bio,
           photoUrl,
           createdBy: user.uid,
           updatedAt: new Date().toISOString()
         });
 
-        // If spouse is specified, update the spouse's spouseId
+        // If spouse is specified, update the spouse's spouseId and maritalStatus
         if (memberData.spouseId) {
           await memberService.updateMember(selectedFamily.id, memberData.spouseId, {
             spouseId: createdMember.id,
+            maritalStatus: 'married',
+            ...(memberData.marriageDate ? { marriageDate: memberData.marriageDate } : {}),
             updatedAt: new Date().toISOString()
           });
         }
@@ -265,6 +279,7 @@ export function useAppHandlers({
       if (memberToDelete?.spouseId) {
         await memberService.updateMember(selectedFamily.id, memberToDelete.spouseId, {
           spouseId: '',
+          maritalStatus: 'single',
           updatedAt: new Date().toISOString()
         });
       }

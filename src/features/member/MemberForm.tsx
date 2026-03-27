@@ -204,6 +204,17 @@ export function MemberForm({ initialData, members, allMembers, families, onSave,
               ))}
             </div>
           </div>
+          {formData.maritalStatus === 'married' && (
+            <div>
+              <label className="block text-sm font-bold text-slate-700 mb-2">Tanggal Pernikahan (Opsional)</label>
+              <input 
+                type="date" 
+                value={formData.marriageDate || ''}
+                onChange={(e) => setFormData({ ...formData, marriageDate: e.target.value })}
+                className="w-full p-4 bg-slate-50 border border-slate-200 rounded-2xl outline-none focus:ring-2 focus:ring-blue-500"
+              />
+            </div>
+          )}
           <div>
             <label className="block text-sm font-bold text-slate-700 mb-2">Tanggal Lahir</label>
             <input 

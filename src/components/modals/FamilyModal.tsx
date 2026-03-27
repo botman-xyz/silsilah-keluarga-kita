@@ -1,25 +1,52 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { X } from 'lucide-react';
+import { X, Upload, Image } from 'lucide-react';
 import { Family } from '../../types';
+import { toast } from 'sonner';
 
 interface FamilyModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onSave: (familyName: string) => void;
+  onSave: (familyName: string, kartuKeluargaUrl?: string) => void;
   initialFamilyName?: string;
+  initialKartuKeluargaUrl?: string;
 }
 
-export const FamilyModal: React.FC<FamilyModalProps> = ({ isOpen, onClose, onSave, initialFamilyName = '' }) => {
+export const FamilyModal: React.FC<FamilyModalProps> = ({ 
+  isOpen, 
+  onClose, 
+  onSave, 
+  initialFamilyName = '',
+  initialKartuKeluargaUrl = '' 
+}) => {
   const [familyName, setFamilyName] = useState(initialFamilyName);
+  const [kartuKeluargaUrl, setKartuKeluargaUrl] = useState(initialKartuKeluargaUrl);
+  const [kkFile, setKkFile] = useState<File | null>(null);
+  const [kkPreview, setKkPreview] = useState<string | null>(null);
 
   useEffect(() => {
     setFamilyName(initialFamilyName);
-  }, [initialFamilyName, isOpen]);
+    setKartuKeluargaUrl(initialKartuKeluargaUrl || '');
+    setKkPreview(initialKartuKeluargaUrl || null);
+  }, [initialFamilyName, initialKartuKeluargaUrl, isOpen]);
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      if (file.size > 5 * 1024 * 1024) {
+        toast.error('File terlalu besar. Maksimum 5MB.');
+        return;
+      }
+      setKkFile(file);
+      setKkPreview(URL.createObjectURL(file));
+    }
+  };
 
   const handleSave = () => {
     if (familyName.trim()) {
-      onSave(familyName.trim());
+      // For now, we'll just pass the URL directly - in production you'd upload to storage
+      const kkUrl = kkFile ? kkPreview : kartuKeluargaUrl;
+      onSave(familyName.trim(), kkUrl || undefined);
     }
   };
 
@@ -49,6 +76,28 @@ export const FamilyModal: React.FC<FamilyModalProps> = ({ isOpen, onClose, onSav
                   placeholder="Contoh: Keluarga Besar Sudirman"
                   className="w-full p-4 bg-slate-50 border border-slate-200 rounded-2xl focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all"
                 />
+              </div>
+              <div>
+                <label className="block text-sm font-bold text-slate-700 mb-2">Kartu Keluarga (Opsional)</label>
+                {!kkPreview ? (
+                  <label className="flex flex-col items-center justify-center w-full h-32 border-2 border-dashed border-slate-200 rounded-2xl cursor-pointer hover:bg-slate-50 hover:border-blue-400 transition-all">
+                    <div className="flex flex-col items-center justify-center">
+                      <Upload className="w-8 h-8 text-slate-300 mb-2" />
+                      <p className="text-xs text-slate-400">Klik untuk upload KK</p>
+                    </div>
+                    <input type="file" className="hidden" accept="image/*" onChange={handleFileChange} />
+                  </label>
+                ) : (
+                  <div className="relative">
+                    <img src={kkPreview} alt="Kartu Keluarga" className="w-full h-40 object-cover rounded-2xl border border-slate-200" />
+                    <button 
+                      onClick={() => { setKkFile(null); setKkPreview(null); }}
+                      className="absolute top-2 right-2 p-1.5 bg-red-500 text-white rounded-lg"
+                    >
+                      <X className="w-4 h-4" />
+                    </button>
+                  </div>
+                )}
               </div>
               <button 
                 onClick={handleSave}

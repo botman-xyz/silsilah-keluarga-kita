@@ -125,8 +125,8 @@ export default function App() {
   } = handlers;
 
   // Wrapper functions that call handlers with additional state
-  const handleAddFamily = async (nameOverride?: string) => {
-    await handleAddFamilyHandler(nameOverride || newFamilyName, editingFamily);
+  const handleAddFamily = async (nameOverride?: string, kartuKeluargaUrl?: string) => {
+    await handleAddFamilyHandler(nameOverride || newFamilyName, editingFamily, kartuKeluargaUrl);
     setNewFamilyName('');
     setEditingFamily(null);
     setShowFamilyModal(false);
@@ -299,6 +299,7 @@ export default function App() {
               }}
               onSave={handleAddFamily}
               initialFamilyName={newFamilyName}
+              initialKartuKeluargaUrl={editingFamily?.kartuKeluargaUrl}
             />
           )}
 

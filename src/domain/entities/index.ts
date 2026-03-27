@@ -31,6 +31,7 @@ export interface Member {
   spouseIds?: string[];
   externalSpouseName?: string;
   maritalStatus?: 'single' | 'married' | 'divorced' | 'widowed';
+  marriageDate?: string;
   externalFamilyId?: string;
   bio?: string;
   createdBy: string;
