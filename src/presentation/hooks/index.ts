@@ -14,3 +14,4 @@ export { useAppHandlers } from './useAppHandlers';
 // Utility functions
 export * from './useSpouseSync';
 export * from './useMemberUtils';
+export * from './useAppUtils';

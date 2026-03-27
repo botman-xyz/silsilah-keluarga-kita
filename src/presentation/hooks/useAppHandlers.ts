@@ -4,6 +4,19 @@ import { isDuplicateMember } from '../../lib/utils';
 import { toast } from 'sonner';
 import { familyService, memberService } from '../../infrastructure/container';
 import { handleSpouseChanges, syncSpouseOnDelete } from './useSpouseSync';
+import {
+  buildFamilyData,
+  isFamilyDuplicate,
+  deleteAllFamilyMembers,
+  showFamilyToast,
+  buildMemberCreateData,
+  buildMemberUpdateData,
+  showMemberToast,
+  buildQuickAddRelative,
+  findDuplicateFamilies,
+  findDuplicateMembers,
+  showDuplicateResults
+} from './useAppUtils';
 
 interface UseAppHandlersProps {
   user: UserProfile | null;
@@ -53,55 +66,48 @@ export function useAppHandlers({
    * If editingFamily is provided, it updates; otherwise creates new
    */
   const handleAddFamily = useCallback(async (
-    nameOverride?: string, 
+    nameOverride?: string,
     editingFamily?: Family | null,
     kartuKeluargaUrl?: string
   ) => {
     const nameToUse = nameOverride;
     if (!user || !nameToUse) return;
-    
+
     // If editing existing family, update it
     if (editingFamily) {
       try {
-        await familyService.updateFamily(editingFamily.id, { 
-          name: nameToUse.trim(),
-          ...(kartuKeluargaUrl ? { kartuKeluargaUrl } : {})
-        });
-        
+        await familyService.updateFamily(editingFamily.id,
+          buildFamilyData(nameToUse, user.uid, kartuKeluargaUrl)
+        );
+
         setNewFamilyName('');
         setEditingFamily(null);
         setShowFamilyModal(false);
-        toast.success('Keluarga berhasil diperbarui!');
+        showFamilyToast('update', true);
         return true;
       } catch (e) {
-        toast.error('Gagal memperbarui keluarga.');
+        showFamilyToast('update', false);
         return false;
       }
     }
-    
-    const isDuplicate = families.some(f => 
-      f.name.toLowerCase() === nameToUse.trim().toLowerCase() && 
-      f.ownerId === user.uid
-    );
-    
-    if (isDuplicate) {
+
+    // Check for duplicates
+    if (isFamilyDuplicate(families, nameToUse, user.uid)) {
       toast.error('Keluarga dengan nama ini sudah ada.');
       return false;
     }
 
     try {
-      await familyService.createFamily({ 
-        name: nameToUse.trim(), 
-        ownerId: user.uid,
-        ...(kartuKeluargaUrl ? { kartuKeluargaUrl } : {})
-      });
-      
+      await familyService.createFamily(
+        buildFamilyData(nameToUse, user.uid, kartuKeluargaUrl)
+      );
+
       setNewFamilyName('');
       setShowFamilyModal(false);
-      toast.success('Keluarga berhasil dibuat!');
+      showFamilyToast('create', true);
       return true;
     } catch (e) {
-      toast.error('Gagal membuat keluarga.');
+      showFamilyToast('create', false);
       return false;
     }
   }, [user, families, setNewFamilyName, setShowFamilyModal, setEditingFamily]);
