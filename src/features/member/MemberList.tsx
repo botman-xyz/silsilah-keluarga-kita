@@ -9,12 +9,6 @@ interface MemberListProps {
 }
 
 export default function MemberList({ members, onSelectMember }: MemberListProps) {
-  // DEBUG: Trace member list rendering
-  console.log('[DEBUG] MemberList rendering with members:', members.length);
-  members.forEach((m, i) => {
-    console.log(`[DEBUG] Member ${i}:`, m.id, m.name);
-  });
-
   const sortedMembers = [...members].sort((a, b) => {
     return a.name.localeCompare(b.name);
   });

@@ -528,9 +528,21 @@ export default function FamilyTree({
     nodeEnter.each(function(d: any) {
       const gNode = d3.select(this);
       if (d.data.type === 'couple') {
-        // Render two cards side by side
-        renderMemberCard(gNode, d.data.member, -(nodeWidth / 2 + 5));
-        renderMemberCard(gNode, d.data.spouse, (nodeWidth / 2 + 5));
+        // Determine left/right positions based on gender (male always on left)
+        const member = d.data.member;
+        const spouse = d.data.spouse;
+        
+        let leftMember = member;
+        let rightMember = spouse;
+        
+        // Swap if spouse is male or member is female
+        if (member.gender === 'female' || spouse.gender === 'male') {
+          leftMember = spouse;
+          rightMember = member;
+        }
+        
+        renderMemberCard(gNode, leftMember, -(nodeWidth / 2 + 5));
+        renderMemberCard(gNode, rightMember, (nodeWidth / 2 + 5));
         
         // Draw a heart icon between them
         const spouseIconGroup = gNode.append("g")

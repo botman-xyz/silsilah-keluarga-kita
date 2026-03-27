@@ -30,7 +30,7 @@ export const AuthView: React.FC<AuthViewProps> = ({
           animate={{ opacity: 1, scale: 1 }}
           className="flex flex-col items-center gap-6"
         >
-          <div className="w-20 h-20 bg-blue-600 text-white rounded-[2rem] flex items-center justify-center shadow-2xl shadow-blue-200 animate-pulse">
+          <div className="w-20 h-20 bg-blue-600 text-white rounded-4xl flex items-center justify-center shadow-2xl shadow-blue-200 animate-pulse">
             <Users className="w-10 h-10" />
           </div>
           <div className="flex flex-col items-center gap-2">
@@ -54,7 +54,7 @@ export const AuthView: React.FC<AuthViewProps> = ({
           animate={{ y: 0, opacity: 1 }}
           className="max-w-md w-full bg-white p-10 rounded-[3rem] shadow-2xl text-center border border-slate-100"
         >
-          <div className="w-20 h-20 bg-blue-50 text-blue-600 rounded-[2rem] flex items-center justify-center mx-auto mb-8">
+          <div className="w-20 h-20 bg-blue-50 text-blue-600 rounded-4xl flex items-center justify-center mx-auto mb-8">
             <Users className="w-10 h-10" />
           </div>
           <h2 className="text-3xl font-black text-slate-900 mb-4">Mulai Silsilah Baru</h2>
