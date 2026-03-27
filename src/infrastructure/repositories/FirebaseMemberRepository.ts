@@ -68,8 +68,19 @@ export class FirebaseMemberRepository implements IMemberRepository {
   async update(familyId: string, memberId: string, data: Partial<Member>): Promise<void> {
     try {
       const docRef = doc(db, 'families', familyId, 'people', memberId);
+      
+      // Check if document exists first
+      const docSnap = await getDoc(docRef);
+      if (!docSnap.exists()) {
+        console.error(`Document not found: families/${familyId}/people/${memberId}`);
+        throw new Error('Anggota keluarga tidak ditemukan atau sudah dihapus.');
+      }
+      
       await updateDoc(docRef, data as Record<string, unknown>);
     } catch (error) {
+      if (error instanceof Error && error.message.includes('tidak ditemukan')) {
+        throw error;
+      }
       handleFirestoreError(error, OperationType.UPDATE, `families/${familyId}/members/${memberId}`);
       throw error;
     }

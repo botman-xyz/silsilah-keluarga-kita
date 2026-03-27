@@ -3,6 +3,7 @@ import { Family, Member, UserProfile } from '../../domain/entities';
 import { isDuplicateMember } from '../../lib/utils';
 import { toast } from 'sonner';
 import { familyService, memberService } from '../../infrastructure/container';
+import { handleSpouseChanges, syncSpouseOnDelete } from './useSpouseSync';
 
 interface UseAppHandlersProps {
   user: UserProfile | null;
@@ -215,19 +216,27 @@ export function useAppHandlers({
         // Handle spouse relationship changes
         if (newSpouseId !== oldSpouseId) {
           if (oldSpouseId) {
-            await memberService.updateMember(selectedFamily.id, oldSpouseId, {
-              spouseId: '',
-              maritalStatus: 'single',
-              updatedAt: new Date().toISOString()
-            });
+            try {
+              await memberService.updateMember(selectedFamily.id, oldSpouseId, {
+                spouseId: '',
+                maritalStatus: 'single',
+                updatedAt: new Date().toISOString()
+              });
+            } catch (e) {
+              console.warn('Failed to update old spouse, may not exist:', oldSpouseId);
+            }
           }
           if (newSpouseId) {
-            await memberService.updateMember(selectedFamily.id, newSpouseId, {
-              spouseId: memberData.id,
-              maritalStatus: 'married',
-              ...(memberData.marriageDate ? { marriageDate: memberData.marriageDate } : {}),
-              updatedAt: new Date().toISOString()
-            });
+            try {
+              await memberService.updateMember(selectedFamily.id, newSpouseId, {
+                spouseId: memberData.id,
+                maritalStatus: 'married',
+                ...(memberData.marriageDate ? { marriageDate: memberData.marriageDate } : {}),
+                updatedAt: new Date().toISOString()
+              });
+            } catch (e) {
+              console.warn('Failed to update new spouse, may not exist:', newSpouseId);
+            }
           }
         }
       } else {
@@ -252,12 +261,16 @@ export function useAppHandlers({
 
         // If spouse is specified, update the spouse's spouseId and maritalStatus
         if (memberData.spouseId) {
-          await memberService.updateMember(selectedFamily.id, memberData.spouseId, {
-            spouseId: createdMember.id,
-            maritalStatus: 'married',
-            ...(memberData.marriageDate ? { marriageDate: memberData.marriageDate } : {}),
-            updatedAt: new Date().toISOString()
-          });
+          try {
+            await memberService.updateMember(selectedFamily.id, memberData.spouseId, {
+              spouseId: createdMember.id,
+              maritalStatus: 'married',
+              ...(memberData.marriageDate ? { marriageDate: memberData.marriageDate } : {}),
+              updatedAt: new Date().toISOString()
+            });
+          } catch (e) {
+            console.warn('Failed to update spouse during create, may not exist:', memberData.spouseId);
+          }
         }
       }
       
@@ -277,11 +290,15 @@ export function useAppHandlers({
       
       // Clear spouse relationship if exists
       if (memberToDelete?.spouseId) {
-        await memberService.updateMember(selectedFamily.id, memberToDelete.spouseId, {
-          spouseId: '',
-          maritalStatus: 'single',
-          updatedAt: new Date().toISOString()
-        });
+        try {
+          await memberService.updateMember(selectedFamily.id, memberToDelete.spouseId, {
+            spouseId: '',
+            maritalStatus: 'single',
+            updatedAt: new Date().toISOString()
+          });
+        } catch (e) {
+          console.warn('Failed to update spouse during delete, may not exist:', memberToDelete.spouseId);
+        }
       }
       
       await memberService.deleteMember(selectedFamily.id, memberId);
