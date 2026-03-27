@@ -334,7 +334,6 @@ export default function App() {
               member={selectedMemberForDetail}
               allMembers={allMembers}
               onEdit={(member) => {
-                console.log('MemberDetailModal onEdit called with:', member);
                 setEditingMember(member);
                 setShowMemberModal(true);
               }}
