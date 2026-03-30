@@ -1,23 +1,29 @@
 import React from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { X, Edit2 } from 'lucide-react';
-import { Member } from '../../types';
+import { X, Edit2, Trash2, GitMerge } from 'lucide-react';
+import { Member, Family } from '../../types';
 import { MemberDetailView } from '../../features/member/MemberDetailView';
 
 interface MemberDetailModalProps {
   isOpen: boolean;
   onClose: () => void;
   onEdit: (member: Member) => void;
+  onDelete?: (member: Member) => void;
+  onMove?: (member: Member) => void;
   member: Member | null;
   allMembers: Member[];
+  families?: Family[];
 }
 
 export const MemberDetailModal: React.FC<MemberDetailModalProps> = ({ 
   isOpen, 
   onClose, 
   onEdit,
+  onDelete,
+  onMove,
   member, 
-  allMembers 
+  allMembers,
+  families 
 }) => {
   if (!isOpen || !member) return null;
 
@@ -36,6 +42,29 @@ export const MemberDetailModal: React.FC<MemberDetailModalProps> = ({
             <div className="flex items-center justify-between p-6 border-b border-slate-100">
               <h3 className="text-xl font-bold text-slate-900">Detail Anggota</h3>
               <div className="flex items-center gap-2">
+                {onMove && families && families.length > 1 && (
+                  <button 
+                    onClick={() => onMove(member)}
+                    className="p-2 hover:bg-amber-50 text-amber-600 rounded-xl transition-colors"
+                    title="Pindah ke Keluarga Lain"
+                  >
+                    <GitMerge className="w-5 h-5" />
+                  </button>
+                )}
+                {onDelete && (
+                  <button 
+                    onClick={() => {
+                      if (confirm(`Hapus anggota "${member.name}"?`)) {
+                        onDelete(member);
+                        onClose();
+                      }
+                    }}
+                    className="p-2 hover:bg-red-50 text-red-600 rounded-xl transition-colors"
+                    title="Hapus"
+                  >
+                    <Trash2 className="w-5 h-5" />
+                  </button>
+                )}
                 <button 
                   onClick={() => {
                     onEdit(member);

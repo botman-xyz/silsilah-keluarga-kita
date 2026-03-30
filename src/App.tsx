@@ -1,16 +1,18 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, lazy, Suspense } from 'react';
 import { Family, Member, UserProfile } from './domain/entities';
 import { useAuth, useFamilies, useMembers } from './presentation/hooks';
 import { isDuplicateMember } from './lib/utils';
-import { Plus, LogOut, Users, Trash2, Edit2, Share2, Search, Scan, Eye, EyeOff } from 'lucide-react';
+import { Plus, LogOut, Users, Trash2, Edit2, Share2, Search, Scan, Eye, EyeOff, Loader2 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Toaster, toast } from 'sonner';
 
-// Features
+// Features - Lazy loaded for better performance
+const ScanKKModal = lazy(() => import('./features/ai/ScanKKModal').then(m => ({ default: m.ScanKKModal })));
+const KinshipDictionaryModal = lazy(() => import('./features/ai/KinshipDictionaryModal').then(m => ({ default: m.KinshipDictionaryModal })));
+
+// Core Components
 import { Header } from './features/ui/Header';
 import { Sidebar } from './features/ui/Sidebar';
-import { ScanKKModal } from './features/ai/ScanKKModal';
-import { KinshipDictionaryModal } from './features/ai/KinshipDictionaryModal';
 
 // Components
 import { ErrorBoundary } from './components/ErrorBoundary';
@@ -59,6 +61,7 @@ export default function App() {
   const [isHeaderHidden, setIsHeaderHidden] = useState(false);
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [showKinshipModal, setShowKinshipModal] = useState(false);
+  const [isAILoading, setIsAILoading] = useState(false);
 
   // Extract handlers into custom hook
   const handlers = useAppHandlers({
@@ -350,9 +353,16 @@ export default function App() {
               onClose={() => setSelectedMemberForDetail(null)}
               member={selectedMemberForDetail}
               allMembers={allMembers}
+              families={families}
               onEdit={(member) => {
                 setEditingMember(member);
                 setShowMemberModal(true);
+              }}
+              onDelete={(member) => handleDeleteMember(member.id)}
+              onMove={(member) => {
+                // Could open a move member modal or use existing merge families modal
+                // For now, let's set up the merge families modal to accept a single member
+                setShowMergeFamiliesModal(true);
               }}
             />
           )}
@@ -370,28 +380,37 @@ export default function App() {
           )}
 
           {showScanKKModal && (
-            <ScanKKModal 
-              onClose={() => setShowScanKKModal(false)}
-              onDataExtracted={async (extractedMembers) => {
-                if (!selectedFamily) {
-                  toast.error("Pilih keluarga terlebih dahulu!");
-                  return;
-                }
-                
-                const loadingToast = toast.loading(`Menyimpan ${extractedMembers.length} anggota keluarga...`);
-                try {
-                  for (const m of extractedMembers) {
-                    await handleSaveMember(m);
+            <Suspense fallback={
+              <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+                <div className="bg-white rounded-2xl p-8 flex flex-col items-center gap-4">
+                  <Loader2 className="w-8 h-8 animate-spin text-blue-600" />
+                  <span className="text-slate-600 font-medium">Memuat fitur AI...</span>
+                </div>
+              </div>
+            }>
+              <ScanKKModal 
+                onClose={() => setShowScanKKModal(false)}
+                onDataExtracted={async (extractedMembers) => {
+                  if (!selectedFamily) {
+                    toast.error("Pilih keluarga terlebih dahulu!");
+                    return;
                   }
-                  toast.dismiss(loadingToast);
-                  toast.success(`Berhasil menambahkan ${extractedMembers.length} anggota keluarga dari KK!`);
-                  setShowScanKKModal(false);
-                } catch (error) {
-                  toast.dismiss(loadingToast);
-                  toast.error("Gagal menyimpan beberapa anggota keluarga.");
-                }
-              }}
-            />
+                  
+                  const loadingToast = toast.loading(`Menyimpan ${extractedMembers.length} anggota keluarga...`);
+                  try {
+                    for (const m of extractedMembers) {
+                      await handleSaveMember(m);
+                    }
+                    toast.dismiss(loadingToast);
+                    toast.success(`Berhasil menambahkan ${extractedMembers.length} anggota keluarga dari KK!`);
+                    setShowScanKKModal(false);
+                  } catch (error) {
+                    toast.dismiss(loadingToast);
+                    toast.error("Gagal menyimpan beberapa anggota keluarga.");
+                  }
+                }}
+              />
+            </Suspense>
           )}
 
           {showHelpModal && (
@@ -418,7 +437,16 @@ export default function App() {
           )}
 
           {showKinshipModal && (
-            <KinshipDictionaryModal onClose={() => setShowKinshipModal(false)} />
+            <Suspense fallback={
+              <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+                <div className="bg-white rounded-2xl p-8 flex flex-col items-center gap-4">
+                  <Loader2 className="w-8 h-8 animate-spin text-blue-600" />
+                  <span className="text-slate-600 font-medium">Memuat fitur AI...</span>
+                </div>
+              </div>
+            }>
+              <KinshipDictionaryModal onClose={() => setShowKinshipModal(false)} />
+            </Suspense>
           )}
 
           {showMergeFamiliesModal && (

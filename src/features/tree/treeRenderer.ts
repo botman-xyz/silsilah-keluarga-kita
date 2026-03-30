@@ -13,6 +13,7 @@ export interface NodeRendererOptions {
   searchTerm: string;
   onSelectMember: (member: Member) => void;
   onAddRelative?: (member: Member) => void;
+  isMantu?: boolean;
 }
 
 /**
@@ -24,7 +25,7 @@ export const renderMemberCard = (
   offsetX: number,
   options: NodeRendererOptions
 ): d3.Selection<SVGGElement, unknown, null, undefined> => {
-  const { nodeWidth, nodeHeight, isMobile, searchTerm, onSelectMember, onAddRelative } = options;
+  const { nodeWidth, nodeHeight, isMobile, searchTerm, onSelectMember, onAddRelative, isMantu = false } = options;
   
   const card = parent.append("g")
     .attr("transform", `translate(${offsetX}, 0)`)
@@ -45,9 +46,9 @@ export const renderMemberCard = (
     .attr("width", nodeWidth)
     .attr("height", nodeHeight)
     .attr("rx", isMobile ? 12 : 16)
-    .attr("fill", "white")
-    .attr("stroke", isMatch ? "#3b82f6" : "#f1f5f9")
-    .attr("stroke-width", isMatch ? 3 : 1)
+    .attr("fill", isMantu ? "#fffbeb" : "white") // Amber-50 for mantu
+    .attr("stroke", isMatch ? "#3b82f6" : isMantu ? "#f59e0b" : "#f1f5f9") // Amber border for mantu
+    .attr("stroke-width", isMatch ? 3 : isMantu ? 2 : 1)
     .style("filter", "drop-shadow(0 10px 15px -3px rgb(0 0 0 / 0.05))");
 
   // Top accent bar

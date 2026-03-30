@@ -5,6 +5,8 @@ import { ZoomControls } from './ZoomControls';
 import { getLayoutConfig, getScaleConstraints } from './treeLayout';
 import { buildTreeHierarchy } from './treeBuilder';
 import { renderMemberCard } from './treeRenderer';
+import { renderTreeBackground } from './TreeBackground';
+import { renderConnections } from './TreeConnections';
 import { ZoomIn, ZoomOut, Maximize, MousePointer2, Eye, EyeOff } from 'lucide-react';
 
 interface FamilyTreeProps {
@@ -28,10 +30,78 @@ export default function FamilyTree({
 }: FamilyTreeProps) {
   const svgRef = useRef<SVGSVGElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
-  const zoomRef = useRef<any>(null);
+  const zoomRef = useRef<d3.ZoomBehavior<SVGSVGElement, unknown> | null>(null);
 
   const [zoomLevel, setZoomLevel] = useState(1);
   const [dimensions, setDimensions] = useState({ width: 0, height: 0 });
+  const [isRendering, setIsRendering] = useState(false);
+  const [selectedNodeIndex, setSelectedNodeIndex] = useState(-1);
+  const memberPositionsRef = useRef<Map<string, { x: number; y: number }>>(new Map());
+
+  // Loading state for large trees
+  const isLargeTree = members.length > 100;
+
+  // Keyboard navigation
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (!svgRef.current) return;
+      
+      const nodes = members;
+      let newIndex = selectedNodeIndex;
+      
+      switch (e.key) {
+        case 'ArrowDown':
+        case 'j':
+          e.preventDefault();
+          newIndex = Math.min(selectedNodeIndex + 1, nodes.length - 1);
+          break;
+        case 'ArrowUp':
+        case 'k':
+          e.preventDefault();
+          newIndex = Math.max(selectedNodeIndex - 1, 0);
+          break;
+        case 'Enter':
+        case 'o':
+          e.preventDefault();
+          if (selectedNodeIndex >= 0 && selectedNodeIndex < nodes.length) {
+            onSelectMember(nodes[selectedNodeIndex]);
+          }
+          break;
+        case 'Escape':
+          setSelectedNodeIndex(-1);
+          break;
+      }
+      
+      if (newIndex !== selectedNodeIndex) {
+        setSelectedNodeIndex(newIndex);
+        
+        // Auto-pan to selected node
+        if (newIndex >= 0 && members[newIndex] && svgRef.current && zoomRef.current) {
+          const memberId = members[newIndex].id;
+          const pos = memberPositionsRef.current.get(memberId);
+          if (pos) {
+            const svg = d3.select(svgRef.current);
+            const containerWidth = containerRef.current?.clientWidth || 800;
+            const containerHeight = containerRef.current?.clientHeight || 600;
+            
+            // Calculate target position to center the node
+            const targetX = containerWidth / 2 - pos.x * zoomLevel;
+            const targetY = containerHeight / 2 - pos.y * zoomLevel;
+            
+            svg.transition()
+              .duration(300)
+              .call(
+                zoomRef.current.transform,
+                d3.zoomIdentity.translate(targetX, targetY).scale(zoomLevel)
+              );
+          }
+        }
+      }
+    };
+    
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [members, selectedNodeIndex, onSelectMember]);
 
   useEffect(() => {
     const updateDimensions = () => {
@@ -50,6 +120,11 @@ export default function FamilyTree({
 
   useEffect(() => {
     if (!svgRef.current || members.length === 0 || dimensions.width === 0) return;
+
+    // Set rendering state for large trees
+    if (isLargeTree) {
+      setIsRendering(true);
+    }
 
     // Clear previous SVG content
     const svgElement = d3.select(svgRef.current);
@@ -287,7 +362,13 @@ export default function FamilyTree({
       .enter()
       .append("g")
       .attr("class", "node")
-      .attr("transform", (d: any) => `translate(${d.x},${d.y})`);
+      .attr("transform", (d: any) => {
+        // Store position for keyboard navigation
+        if (d.data.member?.id) {
+          memberPositionsRef.current.set(d.data.member.id, { x: d.x, y: d.y });
+        }
+        return `translate(${d.x},${d.y})`;
+      });
 
     // Draw Family Unit Backgrounds (Subtle)
     const familyUnits = nodes.filter(d => d.children && d.children.length > 0);
@@ -613,9 +694,11 @@ export default function FamilyTree({
       // Apply transform immediately for better UX
       svg.call(zoom.transform, d3.zoomIdentity.translate(translate[0], translate[1]).scale(initialScale));
       setZoomLevel(initialScale);
+      setIsRendering(false);
     } else {
       // Fallback: center at 70% zoom if no bounds available
       svg.call(zoom.transform, d3.zoomIdentity.translate(width / 2, height / 2).scale(0.7));
+      setIsRendering(false);
     }
 
   }, [members, onSelectMember, searchTerm, dimensions]);
@@ -665,7 +748,17 @@ export default function FamilyTree({
 
   return (
     <div ref={containerRef} className="w-full h-full bg-slate-50 rounded-xl border border-slate-200 overflow-hidden relative">
-      <svg ref={svgRef} className="w-full h-full family-tree-svg"></svg>
+      {/* Loading State for Large Trees */}
+      {isRendering && (
+        <div className="absolute inset-0 z-20 flex items-center justify-center bg-slate-50/90">
+          <div className="flex flex-col items-center gap-3">
+            <div className="w-10 h-10 border-4 border-blue-200 border-t-blue-600 rounded-full animate-spin" />
+            <span className="text-sm font-medium text-slate-600">Merender silsilah...</span>
+          </div>
+        </div>
+      )}
+      
+      <svg ref={svgRef} className="w-full h-full family-tree-svg" tabIndex={0} />
       
       {/* Zoom Controls */}
       <div className="absolute bottom-6 right-6 flex flex-col gap-2">
