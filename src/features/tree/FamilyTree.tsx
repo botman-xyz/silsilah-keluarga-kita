@@ -44,6 +44,10 @@ export default function FamilyTree({
   // Keyboard navigation
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
+      // Don't navigate if modal is open or user is typing in an input
+      const target = e.target as HTMLElement;
+      if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA') return;
+      if (document.querySelector('[class*="fixed"][class*="z-"]')) return;
       if (!svgRef.current) return;
       
       const nodes = members;
