@@ -1,6 +1,7 @@
 import React from 'react';
 import { Family, Member } from '../../types';
 import FamilyTree from '../../features/tree/FamilyTree';
+import GenTree from '../../features/family/GenTree';
 import FamilyStats from '../../features/family/FamilyStats';
 import FamilyTimeline from '../../features/family/FamilyTimeline';
 import RelationshipCalculator from '../../features/family/RelationshipCalculator';
@@ -9,7 +10,7 @@ import MemberList from '../../features/member/MemberList';
 import { Users } from 'lucide-react';
 
 interface MainContentProps {
-  viewMode: 'tree' | 'stats' | 'timeline' | 'calculator' | 'story' | 'list';
+  viewMode: 'tree' | 'gentree' | 'stats' | 'timeline' | 'calculator' | 'story' | 'list';
   selectedFamily: Family | null;
   families: Family[];
   members: Member[];
@@ -72,6 +73,13 @@ export const MainContent: React.FC<MainContentProps> = ({
               onToggleHeader={onToggleHeader}
             />
           </div>
+        );
+      case 'gentree':
+        return (
+          <GenTree 
+            members={members}
+            onSelectMember={onSelectMember}
+          />
         );
       case 'stats':
         return <FamilyStats members={members} />;

@@ -1,6 +1,6 @@
 import React from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Plus, Users, Layout, BarChart2, Calendar, Calculator, BookOpen, List, LogOut, Trash2, User, ChevronLeft, ChevronRight, Share2, Search, Edit2, X, Download, FileUp, Scan, Sparkles, RefreshCw, Send, ImageIcon, FileText, ExternalLink, Heart, Menu } from 'lucide-react';
+import { Plus, Users, Layout, BarChart2, Calendar, Calculator, BookOpen, List, LogOut, Trash2, User, ChevronLeft, ChevronRight, Share2, Search, Edit2, X, Download, FileUp, Scan, Sparkles, RefreshCw, Send, ImageIcon, FileText, ExternalLink, Heart, Menu, GitMerge } from 'lucide-react';
 import { Family, Member, UserProfile } from '../../types';
 import { toast } from 'sonner';
 
@@ -25,6 +25,7 @@ interface SidebarProps {
   onMemberClick: (m: Member) => void;
   onCheckDuplicates: () => void;
   onImportJSON: () => void;
+  onMergeFamilies?: () => void;
 }
 
 export function Sidebar({
@@ -47,7 +48,8 @@ export function Sidebar({
   setViewMode,
   onMemberClick,
   onCheckDuplicates,
-  onImportJSON
+  onImportJSON,
+  onMergeFamilies
 }: SidebarProps) {
   const sidebarVariants = {
     expanded: { width: "288px lg:320px", transition: { type: "spring" as const, stiffness: 300, damping: 30 } },
@@ -56,6 +58,7 @@ export function Sidebar({
 
   const menuItems = [
     { id: 'tree', label: 'Pohon Silsilah', icon: Layout },
+    { id: 'gentree', label: 'Gen Tree', icon: Layout },
     { id: 'list', label: 'Daftar Anggota', icon: List },
     { id: 'stats', label: 'Statistik Keluarga', icon: BarChart2 },
     { id: 'timeline', label: 'Garis Waktu', icon: Calendar },
@@ -281,6 +284,13 @@ export function Sidebar({
                     title="Edit Keluarga"
                   >
                     <Edit2 className="w-4 h-4 mx-auto" />
+                  </button>
+                  <button 
+                    onClick={() => onMergeFamilies?.()}
+                    className="flex-1 p-3 bg-slate-800 text-slate-400 rounded-xl hover:bg-amber-900/30 hover:text-amber-400 transition-all"
+                    title="Gabungkan Keluarga"
+                  >
+                    <GitMerge className="w-4 h-4 mx-auto" />
                   </button>
                   <button 
                     onClick={onDeleteFamily}

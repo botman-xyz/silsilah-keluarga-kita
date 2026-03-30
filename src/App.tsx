@@ -30,6 +30,7 @@ import { MemberDetailModal } from './components/modals/MemberDetailModal';
 import { MemberFormModal } from './components/modals/MemberFormModal';
 import { HelpModal } from './components/modals/HelpModal';
 import { DeleteFamilyConfirmModal } from './components/modals/DeleteFamilyConfirmModal';
+import MergeFamiliesModal from './components/modals/MergeFamiliesModal';
 
 export default function App() {
   // Data hooks (Clean Architecture)
@@ -49,9 +50,10 @@ export default function App() {
   const [showHelpModal, setShowHelpModal] = useState(false);
   const [selectedMemberForDetail, setSelectedMemberForDetail] = useState<Member | null>(null);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [showMergeFamiliesModal, setShowMergeFamiliesModal] = useState(false);
   const [newFamilyName, setNewFamilyName] = useState('');
   const [searchTerm, setSearchTerm] = useState('');
-  const [viewMode, setViewMode] = useState<'tree' | 'stats' | 'timeline' | 'calculator' | 'story' | 'list'>('tree');
+  const [viewMode, setViewMode] = useState<'tree' | 'gentree' | 'stats' | 'timeline' | 'calculator' | 'story' | 'list'>('tree');
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
   const [isHeaderHidden, setIsHeaderHidden] = useState(false);
@@ -154,6 +156,19 @@ export default function App() {
     await handleDeleteFamilyHandler();
   };
 
+  const handleMergeFamilies = async (sourceFamilyId: string, targetFamilyId: string, memberIds: string[]) => {
+    // Update each member's familyId to targetFamilyId
+    const membersToUpdate = allMembers.filter(m => memberIds.includes(m.id));
+    
+    for (const member of membersToUpdate) {
+      await handleSaveMember({
+        ...member,
+        familyId: targetFamilyId,
+        externalFamilyId: sourceFamilyId
+      });
+    }
+  };
+
   const handleRemoveCollaborator = async (collabUid: string) => {
     await handleRemoveCollaboratorHandler(collabUid);
   };
@@ -212,6 +227,7 @@ export default function App() {
                 }}
                 onDeleteFamily={() => setShowDeleteConfirm(true)}
                 onShare={() => { setShowShareModal(true); setIsMobileSidebarOpen(false); }}
+                onMergeFamilies={() => { setShowMergeFamiliesModal(true); setIsMobileSidebarOpen(false); }}
                 viewMode={viewMode}
                 setViewMode={(v) => { setViewMode(v); setIsMobileSidebarOpen(false); }}
                 onMemberClick={(m) => { handleViewMember(m); setIsMobileSidebarOpen(false); }}
@@ -242,6 +258,7 @@ export default function App() {
             }}
             onDeleteFamily={() => setShowDeleteConfirm(true)}
             onShare={() => setShowShareModal(true)}
+            onMergeFamilies={() => setShowMergeFamiliesModal(true)}
             viewMode={viewMode}
             setViewMode={setViewMode}
             onMemberClick={handleViewMember}
@@ -402,6 +419,16 @@ export default function App() {
 
           {showKinshipModal && (
             <KinshipDictionaryModal onClose={() => setShowKinshipModal(false)} />
+          )}
+
+          {showMergeFamiliesModal && (
+            <MergeFamiliesModal
+              isOpen={showMergeFamiliesModal}
+              onClose={() => setShowMergeFamiliesModal(false)}
+              families={families}
+              members={allMembers}
+              onMerge={handleMergeFamilies}
+            />
           )}
         </AnimatePresence>
       </div>

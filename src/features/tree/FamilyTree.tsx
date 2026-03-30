@@ -329,6 +329,10 @@ export default function FamilyTree({
       const isMatch = searchTerm && member.name.toLowerCase().includes(searchTerm.toLowerCase());
       const accentColor = member.gender === 'male' ? "#3b82f6" : member.gender === 'female' ? "#ec4899" : "#94a3b8";
       const bgColor = member.gender === 'male' ? "#eff6ff" : member.gender === 'female' ? "#fdf2f8" : "#f8fafc";
+      
+      // Check if member is mantu (adopted or has external family)
+      const isMantu = member.isAdoptedChild || !!member.externalFamilyId || !!member.externalSpouseName;
+      const mantuColor = "#f59e0b"; // Amber-500 for mantu indicator
 
       // Card Shadow & Main Background
       card.append("rect")
@@ -337,10 +341,29 @@ export default function FamilyTree({
         .attr("width", nodeWidth)
         .attr("height", nodeHeight)
         .attr("rx", isMobile ? 12 : 16)
-        .attr("fill", "white")
-        .attr("stroke", isMatch ? "#3b82f6" : "#f1f5f9")
-        .attr("stroke-width", isMatch ? 3 : 1)
+        .attr("fill", isMantu ? "#fffbeb" : "white") // Amber-50 background for mantu
+        .attr("stroke", isMatch ? "#3b82f6" : isMantu ? "#f59e0b" : "#f1f5f9") // Amber border for mantu
+        .attr("stroke-width", isMatch ? 3 : isMantu ? 2 : 1)
         .style("filter", "drop-shadow(0 10px 15px -3px rgb(0 0 0 / 0.05))");
+
+      // Mantu Badge
+      if (isMantu) {
+        card.append("circle")
+          .attr("cx", nodeWidth / 2 - 12)
+          .attr("cy", -nodeHeight / 2 + 12)
+          .attr("r", 10)
+          .attr("fill", "#f59e0b");
+        
+        card.append("text")
+          .attr("x", nodeWidth / 2 - 12)
+          .attr("y", -nodeHeight / 2 + 12)
+          .attr("dy", "0.35em")
+          .attr("text-anchor", "middle")
+          .attr("fill", "white")
+          .attr("font-size", "10px")
+          .attr("font-weight", "bold")
+          .text("M");
+      }
 
       // Top Accent Bar (Rounded)
       card.append("path")
@@ -430,6 +453,14 @@ export default function FamilyTree({
 
       const yOffset = nameLines.length > 1 ? (isMobile ? 10 : 12) : 0;
 
+      // Mantu label
+      if (isMantu) {
+        card.append("text")
+          .attr("x", textX)
+          .attr("y", (isMobile ? 8 : 10) + yOffset)
+          .attr("class", `${isMobile ? 'text-[9px]' : 'text-[11px]'} font-medium fill-amber-600`)
+          .text("(Mantu)");
+      } else {
       // Dates
       card.append("text")
         .attr("x", textX)
@@ -440,6 +471,7 @@ export default function FamilyTree({
           const death = member.deathDate ? new Date(member.deathDate).getFullYear() : "";
           return `${birth} ${death ? `— ${death}` : ""}`;
         });
+      }
 
       // Search Highlight - Add glow effect if matches search
       if (searchTerm && member.name.toLowerCase().includes(searchTerm.toLowerCase())) {

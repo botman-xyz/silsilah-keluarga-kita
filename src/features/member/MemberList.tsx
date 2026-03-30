@@ -48,7 +48,12 @@ export default function MemberList({ members, onSelectMember }: MemberListProps)
                 </div>
                 
                 <div className="flex-1 min-w-0">
-                  <div className="font-bold text-slate-900 truncate">{member.name}</div>
+                  <div className="font-bold text-slate-900 truncate">
+                    {member.name}
+                    {(member.isAdoptedChild || member.externalFamilyId || member.externalSpouseName) && (
+                      <span className="ml-2 text-xs text-amber-600 font-medium">(Mantu)</span>
+                    )}
+                  </div>
                   <div className="text-sm text-slate-500">
                     {member.gender === 'male' ? 'Laki-laki' : member.gender === 'female' ? 'Perempuan' : 'Lainnya'}
                     {age !== null && ` • ${age} tahun`}

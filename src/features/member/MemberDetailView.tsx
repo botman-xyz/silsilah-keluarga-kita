@@ -31,7 +31,12 @@ export function MemberDetailView({ member, allMembers }: MemberDetailViewProps) 
           )}
         </div>
         <div className="text-center sm:text-left">
-          <h2 className="text-2xl sm:text-3xl font-black text-slate-900 mb-1">{member.name}</h2>
+          <h2 className="text-2xl sm:text-3xl font-black text-slate-900 mb-1">
+            {member.name}
+            {(member.isAdoptedChild || member.externalFamilyId || member.externalSpouseName) && (
+              <span className="ml-2 text-sm text-amber-600 font-medium">(Mantu)</span>
+            )}
+          </h2>
           <div className="flex flex-wrap justify-center sm:justify-start gap-2 mb-3">
             <span className={`px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest ${member.gender === 'male' ? 'bg-blue-100 text-blue-600' : 'bg-pink-100 text-pink-600'}`}>
               {member.gender === 'male' ? 'Laki-laki' : 'Perempuan'}

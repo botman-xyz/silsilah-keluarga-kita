@@ -63,7 +63,12 @@ export default function FamilyTimeline({ members }: FamilyTimelineProps) {
                   {event.date.toLocaleDateString('id-ID', { day: 'numeric', month: 'long' })}
                 </span>
               </div>
-              <h3 className="text-base sm:text-lg font-bold text-slate-900 mb-1">{event.label}</h3>
+              <h3 className="text-base sm:text-lg font-bold text-slate-900 mb-1">
+                {event.label}
+                {(event.member.isAdoptedChild || event.member.externalFamilyId || event.member.externalSpouseName) && (
+                  <span className="ml-2 text-xs text-amber-600 font-medium">(Mantu)</span>
+                )}
+              </h3>
               <div className="flex items-center gap-2">
                 <div className={`w-2 h-2 rounded-full ${event.member.gender === 'male' ? 'bg-blue-400' : 'bg-pink-400'}`} />
                 <span className="text-xs sm:text-sm text-slate-500 font-medium">{event.member.gender === 'male' ? 'Laki-laki' : 'Perempuan'}</span>
