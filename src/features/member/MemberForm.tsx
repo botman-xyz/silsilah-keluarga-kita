@@ -315,43 +315,75 @@ export function MemberForm({ initialData, members, allMembers, families, onSave,
           <h4 className="text-sm font-bold text-slate-400 uppercase tracking-wider">Hubungan Keluarga</h4>
           <div>
             <label className="block text-sm font-bold text-slate-700 mb-2">Ayah</label>
-            <select 
-              value={formData.fatherId}
-              onChange={(e) => handleFatherChange(e.target.value)}
-              className="w-full p-4 bg-slate-50 border border-slate-200 rounded-2xl outline-none focus:ring-2 focus:ring-blue-500 transition-all appearance-none"
-            >
-              <option value="">Pilih Ayah</option>
-              <optgroup label="Dalam Keluarga Ini">
-                {members.filter(m => m.gender === 'male' && m.id !== initialData.id).map(m => (
-                  <option key={m.id} value={m.id}>{m.name}</option>
-                ))}
-              </optgroup>
-              <optgroup label="Dari Keluarga Lain">
-                {allMembers.filter(m => m.gender === 'male' && m.familyId !== formData.familyId).map(m => (
-                  <option key={m.id} value={m.id}>{m.name} ({families.find(f => f.id === m.familyId)?.name})</option>
-                ))}
-              </optgroup>
-            </select>
+            {(() => {
+              // Get the current family ID from either formData or derive from members
+              const currentFamilyId = formData.familyId || (members.length > 0 ? members[0].familyId : '');
+              const localMales = members.filter(m => m.gender === 'male' && m.id !== initialData.id);
+              const externalMales = allMembers.filter(m => 
+                m.gender === 'male' && 
+                m.id !== initialData.id &&
+                m.familyId !== currentFamilyId
+              );
+              return (
+                <select 
+                  value={formData.fatherId}
+                  onChange={(e) => handleFatherChange(e.target.value)}
+                  className="w-full p-4 bg-slate-50 border border-slate-200 rounded-2xl outline-none focus:ring-2 focus:ring-blue-500 transition-all appearance-none"
+                >
+                  <option value="">Pilih Ayah</option>
+                  {localMales.length > 0 && (
+                    <optgroup label="Dalam Keluarga Ini">
+                      {localMales.map(m => (
+                        <option key={m.id} value={m.id}>{m.name}</option>
+                      ))}
+                    </optgroup>
+                  )}
+                  {externalMales.length > 0 && (
+                    <optgroup label="Dari Keluarga Lain">
+                      {externalMales.map(m => (
+                        <option key={m.id} value={m.id}>{m.name} ({families.find(f => f.id === m.familyId)?.name})</option>
+                      ))}
+                    </optgroup>
+                  )}
+                </select>
+              );
+            })()}
           </div>
           <div>
             <label className="block text-sm font-bold text-slate-700 mb-2">Ibu</label>
-            <select 
-              value={formData.motherId}
-              onChange={(e) => handleMotherChange(e.target.value)}
-              className="w-full p-4 bg-slate-50 border border-slate-200 rounded-2xl outline-none focus:ring-2 focus:ring-blue-500 transition-all appearance-none"
-            >
-              <option value="">Pilih Ibu</option>
-              <optgroup label="Dalam Keluarga Ini">
-                {members.filter(m => m.gender === 'female' && m.id !== initialData.id).map(m => (
-                  <option key={m.id} value={m.id}>{m.name}</option>
-                ))}
-              </optgroup>
-              <optgroup label="Dari Keluarga Lain">
-                {allMembers.filter(m => m.gender === 'female' && m.familyId !== formData.familyId).map(m => (
-                  <option key={m.id} value={m.id}>{m.name} ({families.find(f => f.id === m.familyId)?.name})</option>
-                ))}
-              </optgroup>
-            </select>
+            {(() => {
+              // Get the current family ID from either formData or derive from members
+              const currentFamilyId = formData.familyId || (members.length > 0 ? members[0].familyId : '');
+              const localFemales = members.filter(m => m.gender === 'female' && m.id !== initialData.id);
+              const externalFemales = allMembers.filter(m => 
+                m.gender === 'female' && 
+                m.id !== initialData.id &&
+                m.familyId !== currentFamilyId
+              );
+              return (
+                <select 
+                  value={formData.motherId}
+                  onChange={(e) => handleMotherChange(e.target.value)}
+                  className="w-full p-4 bg-slate-50 border border-slate-200 rounded-2xl outline-none focus:ring-2 focus:ring-blue-500 transition-all appearance-none"
+                >
+                  <option value="">Pilih Ibu</option>
+                  {localFemales.length > 0 && (
+                    <optgroup label="Dalam Keluarga Ini">
+                      {localFemales.map(m => (
+                        <option key={m.id} value={m.id}>{m.name}</option>
+                      ))}
+                    </optgroup>
+                  )}
+                  {externalFemales.length > 0 && (
+                    <optgroup label="Dari Keluarga Lain">
+                      {externalFemales.map(m => (
+                        <option key={m.id} value={m.id}>{m.name} ({families.find(f => f.id === m.familyId)?.name})</option>
+                      ))}
+                    </optgroup>
+                  )}
+                </select>
+              );
+            })()}
           </div>
           
           {/* Anak Angkat Checkbox */}

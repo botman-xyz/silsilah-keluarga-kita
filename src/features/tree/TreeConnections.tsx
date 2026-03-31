@@ -1,6 +1,7 @@
 /**
  * Tree Connections Component
  * Renders connection lines between family members
+ * Improved visibility and styling
  */
 
 import * as d3 from 'd3';
@@ -31,9 +32,24 @@ export const renderConnections = (
     .append("path")
     .attr("class", "link")
     .attr("fill", "none")
-    .attr("stroke", "#e2e8f0")
-    .attr("stroke-width", 2)
-    .attr("stroke-dasharray", (d: any) => d.target.data.type === 'couple' ? "0" : "4,4")
+    .attr("stroke", (d: any) => {
+      // Different colors for different connection types
+      const sourceType = d.source.data.type;
+      const targetType = d.target.data.type;
+      
+      // Couple to child connections
+      if (sourceType === 'couple' && targetType === 'individual') {
+        return "#94a3b8"; // slate-400
+      }
+      // Couple to couple (unlikely but just in case)
+      if (sourceType === 'couple' && targetType === 'couple') {
+        return "#64748b"; // slate-500
+      }
+      // Individual to anything
+      return "#cbd5e1"; // slate-300
+    })
+    .attr("stroke-width", 2.5)
+    .attr("stroke-dasharray", (d: any) => d.target.data.type === 'couple' ? "0" : "5,3")
     .attr("d", (d: any) => {
       const sourceX = d.source.x;
       const sourceY = d.source.y + nodeHeight / 2;
@@ -45,9 +61,14 @@ export const renderConnections = (
       return `M${sourceX},${sourceY} 
               C${sourceX},${midY} ${targetX},${midY} ${targetX},${targetY}`;
     })
-    .style("transition", "stroke 0.3s ease")
-    .on("mouseenter", function() { d3.select(this).attr("stroke", "#3b82f6").attr("stroke-width", 3); })
-    .on("mouseleave", function() { d3.select(this).attr("stroke", "#e2e8f0").attr("stroke-width", 2); });
+    .style("transition", "stroke 0.3s ease, stroke-width 0.3s ease")
+    .style("opacity", 0.9)
+    .on("mouseenter", function() { 
+      d3.select(this).attr("stroke", "#3b82f6").attr("stroke-width", 4); 
+    })
+    .on("mouseleave", function() { 
+      d3.select(this).attr("stroke", "#94a3b8").attr("stroke-width", 2.5); 
+    });
 };
 
 export default { renderConnections };

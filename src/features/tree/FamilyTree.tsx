@@ -320,8 +320,11 @@ export default function FamilyTree({
     treeLayout(hierarchy);
 
     // 3. Rendering
+    // Filter out virtual root links
     const nodes = hierarchy.descendants().filter(d => !d.data.isVirtual);
-    const links = hierarchy.links().filter(l => !l.source.data.isVirtual);
+    const links = hierarchy.links().filter(l => 
+      !l.source.data.isVirtual && !l.target.data.isVirtual
+    );
 
     // Draw Generation Backgrounds & Labels
     const depths = Array.from(new Set(nodes.map(d => d.depth)));
@@ -348,7 +351,7 @@ export default function FamilyTree({
         .text(`GEN ${depth}`);
     });
 
-    // Draw Links (Curved/Organic)
+    // Draw Links (Curved/Organic) with improved visibility
     const linkGenerator = d3.linkVertical()
       .x((d: any) => d.x)
       .y((d: any) => d.y);
@@ -359,9 +362,24 @@ export default function FamilyTree({
       .append("path")
       .attr("class", "link")
       .attr("fill", "none")
-      .attr("stroke", "#e2e8f0")
-      .attr("stroke-width", 2)
-      .attr("stroke-dasharray", (d: any) => d.target.data.type === 'couple' ? "0" : "4,4")
+      .attr("stroke", (d: any) => {
+        // Different colors for different connection types
+        const sourceType = d.source.data.type;
+        const targetType = d.target.data.type;
+        
+        // Couple to child connections
+        if (sourceType === 'couple' && targetType === 'individual') {
+          return "#94a3b8"; // slate-400
+        }
+        // Couple to couple (unlikely but just in case)
+        if (sourceType === 'couple' && targetType === 'couple') {
+          return "#64748b"; // slate-500
+        }
+        // Individual to anything
+        return "#cbd5e1"; // slate-300
+      })
+      .attr("stroke-width", 2.5)
+      .attr("stroke-dasharray", (d: any) => d.target.data.type === 'couple' ? "0" : "5,3")
       .attr("d", (d: any) => {
         const sourceX = d.source.x;
         const sourceY = d.source.y + nodeHeight / 2;
@@ -373,9 +391,14 @@ export default function FamilyTree({
         return `M${sourceX},${sourceY} 
                 C${sourceX},${midY} ${targetX},${midY} ${targetX},${targetY}`;
       })
-      .style("transition", "stroke 0.3s ease")
-      .on("mouseenter", function() { d3.select(this).attr("stroke", "#3b82f6").attr("stroke-width", 3); })
-      .on("mouseleave", function() { d3.select(this).attr("stroke", "#e2e8f0").attr("stroke-width", 2); });
+      .style("transition", "stroke 0.3s ease, stroke-width 0.3s ease")
+      .style("opacity", 0.9)
+      .on("mouseenter", function() { 
+        d3.select(this).attr("stroke", "#3b82f6").attr("stroke-width", 4); 
+      })
+      .on("mouseleave", function() { 
+        d3.select(this).attr("stroke", "#94a3b8").attr("stroke-width", 2.5); 
+      });
 
     // Draw Nodes
     const nodeEnter = g.selectAll(".node")
@@ -732,7 +755,7 @@ export default function FamilyTree({
       setIsRendering(false);
     }
 
-  }, [members, onSelectMember, searchTerm, dimensions, localTreePov]);
+  }, [members, onSelectMember, searchTerm, dimensions, treePov]);
 
   const handleZoomIn = () => {
     if (svgRef.current && zoomRef.current) {

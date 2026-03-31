@@ -250,6 +250,29 @@ export function useAppHandlers({
           }
         } else {
           // No spouse change - regular update
+          // First verify the member exists before updating
+          const existingMember = await memberService.getMember(selectedFamily.id, memberData.id!);
+          if (!existingMember) {
+            // Member not found - check if it's because parent is from another family
+            // and try to find in all members
+            const foundInAll = allMembers.find(m => m.id === memberData.id);
+            if (foundInAll) {
+              // Member exists but in different family - update their familyId to current family
+              // This handles cases like "menantu" (daughter-in-law/son-in-law) from another family
+              console.log('Member found in different family, updating familyId:', foundInAll.familyId, '->', selectedFamily.id);
+              
+              // Update with correct familyId
+              await memberService.updateMember(selectedFamily.id, memberData.id!, {
+                ...memberData,
+                familyId: selectedFamily.id,
+                updatedAt: new Date().toISOString()
+              });
+              toast.success('Anggota keluarga dipindahkan ke keluarga ini');
+              return;
+            }
+            toast.error('Anggota keluarga tidak ditemukan');
+            return;
+          }
           await memberService.updateMember(selectedFamily.id, memberData.id!, {
             ...memberData,
             updatedAt: new Date().toISOString()
