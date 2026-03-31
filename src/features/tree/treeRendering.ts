@@ -31,9 +31,13 @@ export function renderTree(
   const layout = getLayoutConfig(width, height);
   const isMobile = width < 768;
   
-  // Use larger canvas size for scrollable content
-  const canvasWidth = 3000;
-  const canvasHeight = 2000;
+  // Calculate dynamic canvas size based on estimated tree dimensions
+  // For large trees, use larger canvas
+  const estimatedNodes = members.length;
+  const estimatedWidth = Math.max(3000, estimatedNodes * 200); // Minimum 3000, scale with nodes
+  const estimatedHeight = Math.max(2000, estimatedNodes * 100); // Minimum 2000, scale with nodes
+  const canvasWidth = Math.min(estimatedWidth, 8000); // Cap at 8000 to prevent excessive memory use
+  const canvasHeight = Math.min(estimatedHeight, 6000); // Cap at 6000
   
   // Clear previous content
   svgElement.selectAll("*").remove();

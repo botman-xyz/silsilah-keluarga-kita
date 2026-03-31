@@ -35,6 +35,23 @@ describe('Firebase Emulator Integration Tests', () => {
   let testEnv: RulesTestEnvironment;
   let db: any;
 
+  // Helper to create family with membership
+  async function createTestFamily(familyId: string, familyName: string, ownerId: string) {
+    await setDoc(doc(db, 'families', familyId), {
+      name: familyName,
+      ownerId,
+      collaborators: [],
+      createdAt: new Date().toISOString()
+    });
+
+    // Add the owner as a member
+    await setDoc(doc(db, 'families', familyId, 'members', ownerId), {
+      userId: ownerId,
+      role: 'owner',
+      joinedAt: new Date().toISOString()
+    });
+  }
+
   beforeAll(async () => {
     try {
       // Initialize test environment with emulator (already running on port 8080)
@@ -61,55 +78,54 @@ describe('Firebase Emulator Integration Tests', () => {
   });
 
   beforeEach(async () => {
-    // Get authenticated Firestore instance for each test
-    db = testEnv.authenticatedContext('test-user').firestore();
-    
+    // Get authenticated Firestore instance for each test with auth token
+    db = testEnv.authenticatedContext('test-user', {
+      email: 'test@example.com',
+      email_verified: true
+    }).firestore();
+
     // Clear Firestore before each test
     await testEnv.clearFirestore();
+
+    // Create test user document
+    await setDoc(doc(db, 'users', 'test-user'), {
+      uid: 'test-user',
+      displayName: 'Test User',
+      photoURL: '',
+      createdAt: new Date().toISOString(),
+      role: 'user'
+    });
   });
 
   describe('Firestore CRUD Operations', () => {
     it('should create a family document', async () => {
-      const familyData = {
-        name: 'Keluarga Utama',
-        ownerId: 'test-user',
-        collaborators: [],
-        createdAt: new Date().toISOString()
-      };
+       await createTestFamily('test-family-1', 'Keluarga Utama', 'test-user');
 
-      await setDoc(doc(db, 'families', 'test-family-1'), familyData);
-      
-      const docSnap = await getDoc(doc(db, 'families', 'test-family-1'));
-      expect(docSnap.exists()).toBe(true);
-      expect(docSnap.data().name).toBe('Keluarga Utama');
-    });
+       const docSnap = await getDoc(doc(db, 'families', 'test-family-1'));
+       expect(docSnap.exists()).toBe(true);
+       expect(docSnap.data().name).toBe('Keluarga Utama');
+     });
 
     it('should create a member in a family', async () => {
-      // First create the family
-      await setDoc(doc(db, 'families', 'test-family-1'), {
-        name: 'Keluarga Utama',
-        ownerId: 'test-user',
-        collaborators: [],
-        createdAt: new Date().toISOString()
-      });
+       await createTestFamily('test-family-1', 'Keluarga Utama', 'test-user');
 
-      // Then create a member
-      const memberData: TestMember = {
-        id: 'member-1',
-        familyId: 'test-family-1',
-        name: 'John Doe',
-        gender: 'male',
-        createdBy: 'test-user',
-        updatedAt: new Date().toISOString()
-      };
+       // Then create a member
+       const memberData: TestMember = {
+         id: 'member-1',
+         familyId: 'test-family-1',
+         name: 'John Doe',
+         gender: 'male',
+         createdBy: 'test-user',
+         updatedAt: new Date().toISOString()
+       };
 
-      await setDoc(doc(db, 'families', 'test-family-1', 'people', 'member-1'), memberData);
-      
-      const docSnap = await getDoc(doc(db, 'families', 'test-family-1', 'people', 'member-1'));
-      expect(docSnap.exists()).toBe(true);
-      expect(docSnap.data().name).toBe('John Doe');
-      expect(docSnap.data().gender).toBe('male');
-    });
+       await setDoc(doc(db, 'families', 'test-family-1', 'people', 'member-1'), memberData);
+
+       const docSnap = await getDoc(doc(db, 'families', 'test-family-1', 'people', 'member-1'));
+       expect(docSnap.exists()).toBe(true);
+       expect(docSnap.data().name).toBe('John Doe');
+       expect(docSnap.data().gender).toBe('male');
+     });
 
     it('should update a member document', async () => {
       // Create family and member
