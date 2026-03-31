@@ -17,6 +17,7 @@ interface FamilyTreeProps {
   onFamilySelect?: (familyId: string) => void;
   isHeaderHidden?: boolean;
   onToggleHeader?: () => void;
+  treePov?: 'suami' | 'istri';
 }
 
 export default function FamilyTree({ 
@@ -26,7 +27,8 @@ export default function FamilyTree({
   onAddRelative,
   onFamilySelect,
   isHeaderHidden = false,
-  onToggleHeader
+  onToggleHeader,
+  treePov = 'suami'
 }: FamilyTreeProps) {
   const svgRef = useRef<SVGSVGElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -278,20 +280,35 @@ export default function FamilyTree({
 
     const startRoots = roots.length > 0 ? roots : (members.length > 0 ? [members[0]] : []);
     
+    // Track which members we've already added to the tree
+    const processedRoots = new Set<string>();
+    
     startRoots.forEach(r => {
-      if (!coveredMembers.has(r.id)) {
+      if (!processedRoots.has(r.id)) {
         const trees = buildHierarchy(r.id);
         virtualRoot.children.push(...trees);
+        // Mark all members in these trees as processed
+        trees.forEach(tree => markMembersProcessed(tree, processedRoots));
       }
     });
 
     // Catch any disconnected members
     members.forEach(m => {
-      if (!coveredMembers.has(m.id)) {
+      if (!processedRoots.has(m.id)) {
         const trees = buildHierarchy(m.id);
         virtualRoot.children.push(...trees);
+        trees.forEach(tree => markMembersProcessed(tree, processedRoots));
       }
     });
+
+    // Helper function to mark all members in a tree as processed
+    function markMembersProcessed(node: any, processedSet: Set<string>) {
+      if (node.member?.id) processedSet.add(node.member.id);
+      if (node.spouse?.id) processedSet.add(node.spouse.id);
+      if (node.children) {
+        node.children.forEach((child: any) => markMembersProcessed(child, processedSet));
+      }
+    }
 
     const hierarchy = d3.hierarchy(virtualRoot);
     
@@ -645,17 +662,27 @@ export default function FamilyTree({
     nodeEnter.each(function(d: any) {
       const gNode = d3.select(this);
       if (d.data.type === 'couple') {
-        // Determine left/right positions based on gender (male always on left)
+        // Determine left/right positions based on POV (perspective)
+        // 'suami' = husband on left, 'istri' = wife on left
         const member = d.data.member;
         const spouse = d.data.spouse;
         
         let leftMember = member;
         let rightMember = spouse;
         
-        // Swap if spouse is male or member is female
-        if (member.gender === 'female' || spouse.gender === 'male') {
-          leftMember = spouse;
-          rightMember = member;
+        // Swap based on POV
+        if (localTreePov === 'istri') {
+          // Wife on left, husband on right
+          if (member.gender === 'male') {
+            leftMember = spouse;
+            rightMember = member;
+          }
+        } else {
+          // Default: husband on left (suami POV)
+          if (member.gender === 'female') {
+            leftMember = spouse;
+            rightMember = member;
+          }
         }
         
         renderMemberCard(gNode, leftMember, -(nodeWidth / 2 + 5));
@@ -705,7 +732,7 @@ export default function FamilyTree({
       setIsRendering(false);
     }
 
-  }, [members, onSelectMember, searchTerm, dimensions]);
+  }, [members, onSelectMember, searchTerm, dimensions, localTreePov]);
 
   const handleZoomIn = () => {
     if (svgRef.current && zoomRef.current) {
@@ -750,6 +777,21 @@ export default function FamilyTree({
     }
   };
 
+  // Handler to toggle POV
+  const handleTogglePov = () => {
+    // This will trigger a re-render with the new POV
+    // We use a callback prop to notify parent
+    const newPov = treePov === 'suami' ? 'istri' : 'suami';
+    // Trigger re-render by using a state update approach
+    // Since treePov comes from props, we'll use a different approach
+    // Actually, we need to pass a setter or use a local state
+    // For now, let's use a simpler approach: force re-render
+    setTreePov(newPov as any);
+  };
+
+  // Local state for treePov to enable toggling
+  const [localTreePov, setTreePov] = useState(treePov);
+
   return (
     <div ref={containerRef} className="w-full h-full bg-slate-50 rounded-xl border border-slate-200 overflow-hidden relative">
       {/* Loading State for Large Trees */}
@@ -763,6 +805,20 @@ export default function FamilyTree({
       )}
       
       <svg ref={svgRef} className="w-full h-full family-tree-svg" tabIndex={0} />
+      
+      {/* POV Toggle Button */}
+      <div className="absolute top-4 right-4 lg:top-6 lg:right-6">
+        <button
+          onClick={handleTogglePov}
+          className="bg-white hover:bg-slate-50 px-4 py-2 rounded-full border border-slate-200 shadow-sm flex items-center gap-2 transition-colors"
+          title={localTreePov === 'suami' ? 'POV: Suami di kiri (klik untuk ganti)' : 'POV: Istri di kiri (klik untuk ganti)'}
+        >
+          <span className="text-lg">{localTreePov === 'suami' ? '👨' : '👩'}</span>
+          <span className="text-xs font-medium text-slate-600">
+            {localTreePov === 'suami' ? 'POV Suami' : 'POV Istri'}
+          </span>
+        </button>
+      </div>
       
       {/* Zoom Controls */}
       <div className="absolute bottom-6 right-6 flex flex-col gap-2">

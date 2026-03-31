@@ -8,7 +8,8 @@ import {
   query,
   addDoc,
   updateDoc,
-  deleteDoc
+  deleteDoc,
+  writeBatch
 } from 'firebase/firestore';
 import { db } from '../../firebase';
 import { Member } from '../../domain/entities';
@@ -109,5 +110,29 @@ export class FirebaseMemberRepository implements IMemberRepository {
     }, (error) => handleFirestoreError(error, OperationType.LIST, `families/${familyId}/members`));
 
     return unsubscribe;
+  }
+
+  /**
+   * Batch update multiple members atomically using Firebase write batch
+   */
+  async batchUpdate(familyId: string, updates: Array<{ memberId: string; data: Partial<Member> }>): Promise<void> {
+    if (updates.length === 0) return;
+    
+    try {
+      const batch = writeBatch(db);
+      
+      for (const { memberId, data } of updates) {
+        const docRef = doc(db, 'families', familyId, 'people', memberId);
+        batch.update(docRef, {
+          ...data,
+          updatedAt: new Date().toISOString()
+        } as Record<string, unknown>);
+      }
+      
+      await batch.commit();
+    } catch (error) {
+      handleFirestoreError(error, OperationType.UPDATE, `families/${familyId}/members (batch)`);
+      throw error;
+    }
   }
 }

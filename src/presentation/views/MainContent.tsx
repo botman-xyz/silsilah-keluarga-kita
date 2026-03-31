@@ -18,6 +18,7 @@ interface MainContentProps {
   extendedMembers: Member[];
   searchTerm: string;
   isHeaderHidden: boolean;
+  treePov: 'suami' | 'istri';
   onSelectMember: (member: Member) => void;
   onAddRelative: (member: Member) => void;
   onFamilySelect: (id: string) => void;
@@ -34,6 +35,7 @@ export const MainContent: React.FC<MainContentProps> = ({
   extendedMembers,
   searchTerm,
   isHeaderHidden,
+  treePov,
   onSelectMember,
   onAddRelative,
   onFamilySelect,
@@ -71,6 +73,7 @@ export const MainContent: React.FC<MainContentProps> = ({
               onFamilySelect={onFamilySelect}
               isHeaderHidden={isHeaderHidden}
               onToggleHeader={onToggleHeader}
+              treePov={treePov}
             />
           </div>
         );

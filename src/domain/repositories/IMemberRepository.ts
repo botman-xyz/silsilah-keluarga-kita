@@ -34,4 +34,10 @@ export interface IMemberRepository {
    * Subscribe to family members changes (real-time updates)
    */
   subscribeByFamilyId(familyId: string, callback: (members: Member[]) => void): () => void;
+  
+  /**
+   * Batch update multiple members atomically using a write batch
+   * Returns the batched operations that can be committed
+   */
+  batchUpdate(familyId: string, updates: Array<{ memberId: string; data: Partial<Member> }>): Promise<void>;
 }

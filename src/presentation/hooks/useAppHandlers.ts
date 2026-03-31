@@ -15,6 +15,8 @@ import {
   buildQuickAddRelative,
   findDuplicateFamilies,
   findDuplicateMembers,
+  findExactDuplicates,
+  findSimilarMembers,
   showDuplicateResults
 } from './useAppUtils';
 
@@ -191,36 +193,67 @@ export function useAppHandlers({
         const oldSpouseId = editingMember?.spouseId;
         const newSpouseId = memberData.spouseId;
 
-        await memberService.updateMember(selectedFamily.id, memberData.id, {
-          ...memberData,
-          updatedAt: new Date().toISOString()
-        });
-
-        // Handle spouse relationship changes
+        // Use atomic batch update for spouse changes
         if (newSpouseId !== oldSpouseId) {
-          if (oldSpouseId) {
+          // Remove old spouse relationship atomically
+          if (oldSpouseId && newSpouseId) {
+            // Both old and new spouse exist - switch atomically
             try {
-              await memberService.updateMember(selectedFamily.id, oldSpouseId, {
-                spouseId: '',
-                maritalStatus: 'single',
+              await memberService.removeSpouseAtomic(selectedFamily.id, editingMember!.id, oldSpouseId);
+              await memberService.setSpouseAtomic(
+                selectedFamily.id, 
+                memberData.id!, 
+                newSpouseId,
+                true,
+                memberData.marriageDate
+              );
+            } catch (e) {
+              console.warn('Failed to update spouse relationship atomically:', e);
+              // Fall back to sequential update
+              await memberService.updateMember(selectedFamily.id, memberData.id!, {
+                ...memberData,
                 updatedAt: new Date().toISOString()
               });
-            } catch (e) {
-              console.warn('Failed to update old spouse, may not exist:', oldSpouseId);
             }
-          }
-          if (newSpouseId) {
+          } else if (oldSpouseId) {
+            // Only old spouse - remove it
             try {
-              await memberService.updateMember(selectedFamily.id, newSpouseId, {
-                spouseId: memberData.id,
-                maritalStatus: 'married',
-                ...(memberData.marriageDate ? { marriageDate: memberData.marriageDate } : {}),
+              await memberService.removeSpouseAtomic(selectedFamily.id, editingMember!.id, oldSpouseId);
+            } catch (e) {
+              console.warn('Failed to remove old spouse:', e);
+            }
+            // Then update the member
+            await memberService.updateMember(selectedFamily.id, memberData.id!, {
+              ...memberData,
+              spouseId: '',
+              maritalStatus: memberData.spouseId ? 'married' : (memberData.maritalStatus || 'single'),
+              updatedAt: new Date().toISOString()
+            });
+          } else if (newSpouseId) {
+            // Only new spouse - add it
+            try {
+              await memberService.setSpouseAtomic(
+                selectedFamily.id,
+                memberData.id!,
+                newSpouseId,
+                true,
+                memberData.marriageDate
+              );
+            } catch (e) {
+              console.warn('Failed to add new spouse:', e);
+              // Fall back to sequential update
+              await memberService.updateMember(selectedFamily.id, memberData.id!, {
+                ...memberData,
                 updatedAt: new Date().toISOString()
               });
-            } catch (e) {
-              console.warn('Failed to update new spouse, may not exist:', newSpouseId);
             }
           }
+        } else {
+          // No spouse change - regular update
+          await memberService.updateMember(selectedFamily.id, memberData.id!, {
+            ...memberData,
+            updatedAt: new Date().toISOString()
+          });
         }
       } else {
         // Create new member - extract required fields from memberData
@@ -242,15 +275,16 @@ export function useAppHandlers({
           updatedAt: new Date().toISOString()
         });
 
-        // If spouse is specified, update the spouse's spouseId and maritalStatus
+        // If spouse is specified, update the spouse's spouseId and maritalStatus atomically
         if (memberData.spouseId) {
           try {
-            await memberService.updateMember(selectedFamily.id, memberData.spouseId, {
-              spouseId: createdMember.id,
-              maritalStatus: 'married',
-              ...(memberData.marriageDate ? { marriageDate: memberData.marriageDate } : {}),
-              updatedAt: new Date().toISOString()
-            });
+            await memberService.setSpouseAtomic(
+              selectedFamily.id,
+              createdMember.id,
+              memberData.spouseId,
+              true,
+              memberData.marriageDate
+            );
           } catch (e) {
             console.warn('Failed to update spouse during create, may not exist:', memberData.spouseId);
           }
@@ -269,25 +303,33 @@ export function useAppHandlers({
   const handleDeleteMember = useCallback(async (memberId: string, members: Member[]) => {
     if (!selectedFamily) return;
     try {
-      const memberToDelete = members.find(m => m.id === memberId);
-      
-      // Clear spouse relationship if exists
-      if (memberToDelete?.spouseId) {
-        try {
-          await memberService.updateMember(selectedFamily.id, memberToDelete.spouseId, {
-            spouseId: '',
-            maritalStatus: 'single',
-            updatedAt: new Date().toISOString()
-          });
-        } catch (e) {
-          console.warn('Failed to update spouse during delete, may not exist:', memberToDelete.spouseId);
-        }
-      }
-      
-      await memberService.deleteMember(selectedFamily.id, memberId);
+      // Use atomic delete to clear spouse and parent references
+      await memberService.deleteMemberAtomic(selectedFamily.id, memberId);
       toast.success('Anggota berhasil dihapus.');
     } catch (e) {
-      toast.error('Gagal menghapus anggota.');
+      console.warn('Atomic delete failed, falling back to simple delete:', e);
+      // Fallback to simple delete
+      try {
+        const memberToDelete = members.find(m => m.id === memberId);
+        
+        // Clear spouse relationship if exists
+        if (memberToDelete?.spouseId) {
+          try {
+            await memberService.updateMember(selectedFamily.id, memberToDelete.spouseId, {
+              spouseId: '',
+              maritalStatus: 'single',
+              updatedAt: new Date().toISOString()
+            });
+          } catch (e) {
+            console.warn('Failed to update spouse during delete:', e);
+          }
+        }
+        
+        await memberService.deleteMember(selectedFamily.id, memberId);
+        toast.success('Anggota berhasil dihapus.');
+      } catch (fallbackError) {
+        toast.error('Gagal menghapus anggota.');
+      }
     }
   }, [selectedFamily]);
 
@@ -302,11 +344,20 @@ export function useAppHandlers({
     if (!user) return;
 
     const duplicateFamilies = findDuplicateFamilies(families, user.uid);
-    const duplicateMembers = selectedFamily
-      ? findDuplicateMembers(allMembers.filter(m => m.familyId === selectedFamily.id))
+    const familyMembers = selectedFamily
+      ? allMembers.filter(m => m.familyId === selectedFamily.id)
       : [];
 
-    showDuplicateResults(duplicateFamilies, duplicateMembers);
+    // Check for exact duplicates (same name + birthDate)
+    const exactDuplicates = findExactDuplicates(familyMembers);
+    
+    // Check for similar names
+    const similarMembers = findSimilarMembers(familyMembers);
+
+    // Combine results
+    const duplicateNames = [...new Set(exactDuplicates.flat().map(m => m.name))];
+    
+    showDuplicateResults(duplicateFamilies, duplicateNames, exactDuplicates, similarMembers);
   }, [user, families, selectedFamily, allMembers]);
 
   return {

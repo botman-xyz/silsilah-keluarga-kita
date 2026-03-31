@@ -126,18 +126,31 @@ export const buildTreeHierarchy = (
 
   const startRoots = roots.length > 0 ? roots : (members.length > 0 ? [members[0]] : []);
   
+  // Track which members we've already added to the tree
+  const processedRoots = new Set<string>();
+  
+  // Helper function to mark all members in a tree as processed
+  const markMembersProcessed = (node: TreeNode) => {
+    if (node.member?.id) processedRoots.add(node.member.id);
+    if (node.spouse?.id) processedRoots.add(node.spouse.id);
+    node.children.forEach(child => markMembersProcessed(child));
+  };
+  
   startRoots.forEach(r => {
-    if (!coveredMembers.has(r.id)) {
+    if (!processedRoots.has(r.id)) {
       const trees = buildHierarchy(r.id);
       virtualRoot.children.push(...trees);
+      // Mark all members in these trees as processed
+      trees.forEach(tree => markMembersProcessed(tree));
     }
   });
 
   // Catch disconnected members
   members.forEach(m => {
-    if (!coveredMembers.has(m.id)) {
+    if (!processedRoots.has(m.id)) {
       const trees = buildHierarchy(m.id);
       virtualRoot.children.push(...trees);
+      trees.forEach(tree => markMembersProcessed(tree));
     }
   });
 

@@ -195,10 +195,92 @@ export const findDuplicateMembers = (members: Member[]): string[] => {
 };
 
 /**
+ * Enhanced duplicate detection - checks multiple criteria
+ */
+export const findExactDuplicates = (members: Member[]): Member[][] => {
+  const groups = new Map<string, Member[]>();
+  
+  members.forEach(m => {
+    // Key: name + birthDate (exact match)
+    const key = `${m.name.toLowerCase().trim()}|${m.birthDate || ''}`;
+    if (!groups.has(key)) {
+      groups.set(key, []);
+    }
+    groups.get(key)!.push(m);
+  });
+  
+  // Return only groups with more than one member
+  return Array.from(groups.values()).filter(group => group.length > 1);
+};
+
+/**
+ * Find similar members (fuzzy matching based on name similarity)
+ */
+export const findSimilarMembers = (members: Member[]): Member[][] => {
+  const similarGroups: Member[][] = [];
+  const processed = new Set<string>();
+  
+  members.forEach(member => {
+    if (processed.has(member.id)) return;
+    
+    const similar: Member[] = [member];
+    const normalizedName = member.name.toLowerCase().trim();
+    
+    members.forEach(other => {
+      if (member.id === other.id) return;
+      if (processed.has(other.id)) return;
+      
+      const otherNormalized = other.name.toLowerCase().trim();
+      
+      // Check if names are very similar (allowing for typos)
+      if (areNamesSimilar(normalizedName, otherNormalized)) {
+        similar.push(other);
+        processed.add(other.id);
+      }
+    });
+    
+    if (similar.length > 1) {
+      similarGroups.push(similar);
+      processed.add(member.id);
+    }
+  });
+  
+  return similarGroups;
+};
+
+/**
+ * Simple string similarity check (Jaccard-based)
+ */
+const areNamesSimilar = (name1: string, name2: string): boolean => {
+  // Exact match
+  if (name1 === name2) return true;
+  
+  // Check if one contains the other
+  if (name1.includes(name2) || name2.includes(name1)) return true;
+  
+  // Simple word-based similarity
+  const words1 = new Set(name1.split(' ').filter(w => w.length > 2));
+  const words2 = new Set(name2.split(' ').filter(w => w.length > 2));
+  
+  if (words1.size === 0 || words2.size === 0) return false;
+  
+  // Calculate Jaccard similarity
+  const intersection = new Set([...words1].filter(w => words2.has(w)));
+  const union = new Set([...words1, ...words2]);
+  
+  return intersection.size / union.size > 0.5;
+};
+
+/**
  * Show duplicate check results
  */
-export const showDuplicateResults = (familyDuplicates: string[], memberDuplicates: string[]): void => {
-  if (familyDuplicates.length === 0 && memberDuplicates.length === 0) {
+export const showDuplicateResults = (
+  familyDuplicates: string[], 
+  memberDuplicates: string[],
+  exactDuplicates?: Member[][],
+  similarMembers?: Member[][]
+): void => {
+  if (familyDuplicates.length === 0 && memberDuplicates.length === 0 && (!exactDuplicates || exactDuplicates.length === 0) && (!similarMembers || similarMembers.length === 0)) {
     toast.info('Tidak ditemukan duplikasi keluarga atau anggota.');
     return;
   }
@@ -208,8 +290,25 @@ export const showDuplicateResults = (familyDuplicates: string[], memberDuplicate
     message += `Duplikasi keluarga: ${[...new Set(familyDuplicates)].join(', ')}. `;
   }
   if (memberDuplicates.length > 0) {
-    message += `Duplikasi anggota di keluarga ini: ${[...new Set(memberDuplicates)].join(', ')}.`;
+    message += `Duplikasi anggota di keluarga ini: ${[...new Set(memberDuplicates)].join(', ')}. `;
   }
+  
+  // Show exact duplicates details
+  if (exactDuplicates && exactDuplicates.length > 0) {
+    exactDuplicates.forEach(group => {
+      const names = group.map(m => m.name).join(' & ');
+      message += `\n⚠️ Duplicate: ${names} (same name & birth date)`;
+    });
+  }
+  
+  // Show similar members
+  if (similarMembers && similarMembers.length > 0) {
+    similarMembers.forEach(group => {
+      const names = group.map(m => m.name).join(' & ');
+      message += `\n🔍 Similar names: ${names}`;
+    });
+  }
+  
   toast.warning(message, { duration: 10000 });
 };
 
@@ -224,5 +323,7 @@ export default {
   buildQuickAddRelative,
   findDuplicateFamilies,
   findDuplicateMembers,
+  findExactDuplicates,
+  findSimilarMembers,
   showDuplicateResults
 };

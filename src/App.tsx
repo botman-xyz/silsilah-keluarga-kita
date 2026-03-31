@@ -62,6 +62,9 @@ export default function App() {
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [showKinshipModal, setShowKinshipModal] = useState(false);
   const [isAILoading, setIsAILoading] = useState(false);
+  
+  // POV (Perspective) for tree view: 'suami' (husband left) or 'istri' (wife left)
+  const [treePov, setTreePov] = useState<'suami' | 'istri'>('suami');
 
   // Extract handlers into custom hook
   const handlers = useAppHandlers({
@@ -167,7 +170,8 @@ export default function App() {
       await handleSaveMember({
         ...member,
         familyId: targetFamilyId,
-        externalFamilyId: sourceFamilyId
+        // Only set externalFamilyId if moving to a DIFFERENT family
+        externalFamilyId: sourceFamilyId !== targetFamilyId ? sourceFamilyId : undefined
       });
     }
   };
@@ -296,6 +300,7 @@ export default function App() {
             extendedMembers={extendedMembers}
             searchTerm={searchTerm}
             isHeaderHidden={isHeaderHidden}
+            treePov={treePov}
             onSelectMember={handleViewMember}
             onAddRelative={handleQuickAddRelative}
             onFamilySelect={(id) => {
