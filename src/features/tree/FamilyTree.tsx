@@ -195,144 +195,15 @@ export default function FamilyTree({
     zoomRef.current = zoom;
     svg.call(zoom);
 
-    // Use a local ref to store the member map to avoid calling hooks inside useEffect
-    // This is a workaround for the React hooks rules
+    // Use existing treeBuilder to create hierarchy (DRY principle)
+    // This replaces the duplicated buildHierarchy logic
     const memberMapRef = useRef(new Map(members.map(m => [m.id, m])));
-    // Update the ref when members change
     memberMapRef.current = new Map(members.map(m => [m.id, m]));
     
-    // 1. Build hierarchy using ref-based member map (avoids O(n) rebuild on every render)
-    const coveredMembers = new Set<string>();
-    
-    const buildHierarchy = useCallback((memberId: string, parentPath: string = "root", visited: Set<string> = new Set()): any[] => {
-      // Prevent infinite recursion
-      if (visited.has(memberId)) return [];
-      
-      const member = memberMapRef.current.get(memberId);
-      if (!member) return [];
-
-      const newVisited = new Set(visited);
-      newVisited.add(memberId);
-      
-      // Get all spouses (current and past)
-      const spouseIds = new Set<string>();
-      if (member.spouseId) spouseIds.add(member.spouseId);
-      if (member.spouseIds) member.spouseIds.forEach(id => spouseIds.add(id));
-      
-      // Find all children of this member (using memoized member map for O(1) lookup)
-      const allChildren = members.filter(m => m.fatherId === member.id || m.motherId === member.id);
-      
-      // Group children by their "other" parent
-      const childrenByOtherParent = new Map<string, Member[]>();
-      const childrenWithNoOtherParent: Member[] = [];
-      
-      allChildren.forEach(child => {
-        const otherParentId = child.fatherId === member.id ? child.motherId : child.fatherId;
-        if (otherParentId && spouseIds.has(otherParentId)) {
-          if (!childrenByOtherParent.has(otherParentId)) childrenByOtherParent.set(otherParentId, []);
-          childrenByOtherParent.get(otherParentId)!.push(child);
-        } else {
-          childrenWithNoOtherParent.push(child);
-        }
-      });
-
-      const nodes: any[] = [];
-
-      // Create a node for each spouse relationship that has children or is the current spouse
-      spouseIds.forEach(spouseId => {
-        if (!memberMapRef.current.has(spouseId)) return;
-        const spouse = memberMapRef.current.get(spouseId)!;
-        const coupleChildren = childrenByOtherParent.get(spouseId) || [];
-        
-        // Only create a couple node if they have children together OR it's the primary spouse
-        if (coupleChildren.length > 0 || member.spouseId === spouseId) {
-          const node: any = {
-            id: `${parentPath}_${member.id}_${spouse.id}`,
-            type: 'couple',
-            member: member,
-            spouse: spouse,
-            children: []
-          };
-          
-          coupleChildren.forEach(child => {
-            const childNodes = buildHierarchy(child.id, node.id, newVisited);
-            node.children.push(...childNodes);
-          });
-          
-          nodes.push(node);
-          coveredMembers.add(memberId);
-          coveredMembers.add(spouseId);
-        }
-      });
-
-      // If no couple nodes were created, or there are children with no other parent, create an individual node
-      if (nodes.length === 0 || childrenWithNoOtherParent.length > 0) {
-        const node: any = {
-          id: `${parentPath}_${member.id}`,
-          type: 'individual',
-          member: member,
-          children: []
-        };
-        
-        childrenWithNoOtherParent.forEach(child => {
-          const childNodes = buildHierarchy(child.id, node.id, newVisited);
-          node.children.push(...childNodes);
-        });
-        
-        nodes.push(node);
-        coveredMembers.add(memberId);
-      }
-
-      return nodes;
-    }, [members]);
-    
-    // Continue with existing code... (virtualRoot, roots, etc)
-
-    // Create a virtual root
-    const virtualRoot: any = {
-      id: 'VIRTUAL_ROOT',
-      name: 'Root',
-      isVirtual: true,
-      children: []
-    };
-
-    // Find roots (people without parents in the list)
-    const roots = members.filter(m => 
-      (!m.fatherId || !memberMapRef.current.has(m.fatherId)) && 
-      (!m.motherId || !memberMapRef.current.has(m.motherId))
-    );
-
-    const startRoots = roots.length > 0 ? roots : (members.length > 0 ? [members[0]] : []);
-    
-    // Track which members we've already added to the tree
-    const processedRoots = new Set<string>();
-    
-    startRoots.forEach(r => {
-      if (!processedRoots.has(r.id)) {
-        const trees = buildHierarchy(r.id);
-        virtualRoot.children.push(...trees);
-        // Mark all members in these trees as processed
-        trees.forEach(tree => markMembersProcessed(tree, processedRoots));
-      }
-    });
-
-    // Catch any disconnected members
-    members.forEach(m => {
-      if (!processedRoots.has(m.id)) {
-        const trees = buildHierarchy(m.id);
-        virtualRoot.children.push(...trees);
-        trees.forEach(tree => markMembersProcessed(tree, processedRoots));
-      }
-    });
-
-    // Helper function to mark all members in a tree as processed
-    function markMembersProcessed(node: any, processedSet: Set<string>) {
-      if (node.member?.id) processedSet.add(node.member.id);
-      if (node.spouse?.id) processedSet.add(node.spouse.id);
-      if (node.children) {
-        node.children.forEach((child: any) => markMembersProcessed(child, processedSet));
-      }
-    }
+    // Use treeBuilder's buildTreeHierarchy which is already well-tested
+    // The treeBuilder returns a virtual root with children
+    const treeData = buildTreeHierarchy(members);
+    const virtualRoot = treeData;
 
     const hierarchy = d3.hierarchy(virtualRoot);
     
