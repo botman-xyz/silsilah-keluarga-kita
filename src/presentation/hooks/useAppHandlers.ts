@@ -170,6 +170,10 @@ export function useAppHandlers({
   const handleSaveMember = useCallback(async (memberData: Partial<Member>, editingMember: Member | null) => {
     if (!selectedFamily || !user) return;
 
+    // Determine the target family - for existing members, use their actual familyId
+    // This handles the mantu (in-law) scenario where member belongs to a different family
+    const targetFamilyId = editingMember?.familyId || selectedFamily.id;
+
     if (!editingMember) {
       // For new members, use shared utility for duplicate detection
       const isDuplicate = isDuplicateMember(
@@ -199,9 +203,9 @@ export function useAppHandlers({
           if (oldSpouseId && newSpouseId) {
             // Both old and new spouse exist - switch atomically
             try {
-              await memberService.removeSpouseAtomic(selectedFamily.id, editingMember!.id, oldSpouseId);
+              await memberService.removeSpouseAtomic(targetFamilyId, editingMember!.id, oldSpouseId);
               await memberService.setSpouseAtomic(
-                selectedFamily.id, 
+                targetFamilyId, 
                 memberData.id!, 
                 newSpouseId,
                 true,
@@ -210,7 +214,7 @@ export function useAppHandlers({
             } catch (e) {
               console.warn('Failed to update spouse relationship atomically:', e);
               // Fall back to sequential update
-              await memberService.updateMember(selectedFamily.id, memberData.id!, {
+              await memberService.updateMember(targetFamilyId, memberData.id!, {
                 ...memberData,
                 updatedAt: new Date().toISOString()
               });
@@ -218,12 +222,12 @@ export function useAppHandlers({
           } else if (oldSpouseId) {
             // Only old spouse - remove it
             try {
-              await memberService.removeSpouseAtomic(selectedFamily.id, editingMember!.id, oldSpouseId);
+              await memberService.removeSpouseAtomic(targetFamilyId, editingMember!.id, oldSpouseId);
             } catch (e) {
               console.warn('Failed to remove old spouse:', e);
             }
             // Then update the member
-            await memberService.updateMember(selectedFamily.id, memberData.id!, {
+            await memberService.updateMember(targetFamilyId, memberData.id!, {
               ...memberData,
               spouseId: '',
               maritalStatus: memberData.spouseId ? 'married' : (memberData.maritalStatus || 'single'),
@@ -233,7 +237,7 @@ export function useAppHandlers({
             // Only new spouse - add it
             try {
               await memberService.setSpouseAtomic(
-                selectedFamily.id,
+                targetFamilyId,
                 memberData.id!,
                 newSpouseId,
                 true,
@@ -242,7 +246,7 @@ export function useAppHandlers({
             } catch (e) {
               console.warn('Failed to add new spouse:', e);
               // Fall back to sequential update
-              await memberService.updateMember(selectedFamily.id, memberData.id!, {
+              await memberService.updateMember(targetFamilyId, memberData.id!, {
                 ...memberData,
                 updatedAt: new Date().toISOString()
               });
@@ -250,7 +254,7 @@ export function useAppHandlers({
           }
         } else {
           // No spouse change - regular update
-          await memberService.updateMember(selectedFamily.id, memberData.id!, {
+          await memberService.updateMember(targetFamilyId, memberData.id!, {
             ...memberData,
             updatedAt: new Date().toISOString()
           });
@@ -259,10 +263,10 @@ export function useAppHandlers({
         // Create new member - extract required fields from memberData
         const { id, name, gender, birthDate, fatherId, motherId, spouseId, maritalStatus, marriageDate, bio, photoUrl } = memberData;
         
-        const createdMember = await memberService.createMember(selectedFamily.id, {
+        const createdMember = await memberService.createMember(targetFamilyId, {
           name: name || '',
           gender: gender || 'other',
-          familyId: selectedFamily.id,
+          familyId: targetFamilyId,
           birthDate,
           fatherId,
           motherId,
@@ -279,7 +283,7 @@ export function useAppHandlers({
         if (memberData.spouseId) {
           try {
             await memberService.setSpouseAtomic(
-              selectedFamily.id,
+              targetFamilyId,
               createdMember.id,
               memberData.spouseId,
               true,

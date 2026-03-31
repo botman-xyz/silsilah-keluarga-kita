@@ -76,11 +76,15 @@ export class FirebaseMemberRepository implements IMemberRepository {
         // Check if member exists in a different family (mantu scenario)
         // Search across all families to find the member
         const allFamilies = await this.getAllFamilies();
-        for (const familyId of allFamilies) {
-          const memberDocRef = doc(db, 'families', familyId, 'people', memberId);
+        for (const otherFamilyId of allFamilies) {
+          const memberDocRef = doc(db, 'families', otherFamilyId, 'people', memberId);
           const memberSnap = await getDoc(memberDocRef);
           if (memberSnap.exists()) {
             const memberData = memberSnap.data() as Member;
+            // If familyId changed, log it for debugging
+            if (memberData.familyId && memberData.familyId !== familyId) {
+              console.log(`Member found in different family, updating familyId: ${memberData.familyId} -> ${familyId}`);
+            }
             // Member exists in different family - this is a mantu (in-law) scenario
             // Update the member in their original family first
             await updateDoc(memberDocRef, data as Record<string, unknown>);

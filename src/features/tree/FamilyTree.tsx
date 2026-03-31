@@ -9,11 +9,6 @@ import { renderTreeBackground } from './TreeBackground';
 import { renderConnections } from './TreeConnections';
 import { ZoomIn, ZoomOut, Maximize, MousePointer2, Eye, EyeOff } from 'lucide-react';
 
-// Performance constants
-const VIRTUALIZATION_THRESHOLD = 50; // Only virtualize when > 50 nodes
-const DEBOUNCE_DELAY = 100; // Debounce zoom/pan updates
-const VIEWPORT_MARGIN = 200; // Extra margin for viewport calculation
-
 interface FamilyTreeProps {
   members: Member[];
   searchTerm?: string;
