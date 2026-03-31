@@ -25,7 +25,8 @@ export interface RenderConfig {
 export function renderTree(
   svgElement: d3.Selection<SVGSVGElement, unknown, null, undefined>,
   config: RenderConfig,
-  memberPositionsRef: React.MutableRefObject<Map<string, { x: number; y: number }>>
+  memberPositionsRef: React.MutableRefObject<Map<string, { x: number; y: number }>>,
+  renderedNodesRef?: React.MutableRefObject<any[]>
 ): d3.ZoomBehavior<SVGSVGElement, unknown> | null {
   const { width, height, members, searchTerm, onSelectMember, onAddRelative } = config;
   const layout = getLayoutConfig(width, height);
@@ -54,19 +55,32 @@ export function renderTree(
   // Render grid
   renderGrid(g, isMobile);
   
-  // Build hierarchy
-  const treeData = buildTreeHierarchy(members);
-  const hierarchy = d3.hierarchy(treeData);
-  
-  // Layout
-  const treeLayout = d3.tree<TreeNode>()
-    .nodeSize([layout.nodeWidth * 2 + layout.horizontalSpacing, layout.nodeHeight + layout.verticalSpacing]);
-  treeLayout(hierarchy);
+  // Build hierarchy with error handling
+  let treeData: TreeNode;
+  let hierarchy: d3.HierarchyNode<TreeNode>;
+  try {
+    treeData = buildTreeHierarchy(members);
+    hierarchy = d3.hierarchy(treeData);
+
+    // Layout
+    const treeLayout = d3.tree<TreeNode>()
+      .nodeSize([layout.nodeWidth * 2 + layout.horizontalSpacing, layout.nodeHeight + layout.verticalSpacing]);
+    treeLayout(hierarchy);
+  } catch (error) {
+    console.error('Error building tree hierarchy:', error);
+    // Return null to indicate failure
+    return null;
+  }
   
   // Filter nodes
   const nodes = hierarchy.descendants().filter(d => !d.data.isVirtual) as d3.HierarchyPointNode<TreeNode>[];
   const links = hierarchy.links().filter(l => !l.source.data.isVirtual && !l.target.data.isVirtual) as d3.HierarchyPointLink<TreeNode>[];
-  
+
+  // Store rendered nodes for keyboard navigation
+  if (renderedNodesRef) {
+    renderedNodesRef.current = nodes;
+  }
+
   // Store positions
   nodes.forEach(d => {
     if (d.data.member?.id) {

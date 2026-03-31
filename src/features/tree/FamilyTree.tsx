@@ -30,12 +30,14 @@ export default function FamilyTree({
   const containerRef = useRef<HTMLDivElement>(null);
   const zoomRef = useRef<any>(null);
   const memberPositionsRef = useRef<Map<string, { x: number; y: number }>>(new Map());
+  const renderedNodesRef = useRef<any[]>([]);
 
   const [zoomLevel, setZoomLevel] = useState(1);
   const [dimensions, setDimensions] = useState({ width: 0, height: 0 });
   const [isRendering, setIsRendering] = useState(false);
   const [selectedNodeIndex, setSelectedNodeIndex] = useState(-1);
   const [localTreePov, setTreePov] = useState<'suami' | 'istri'>('suami');
+  const mountedRef = useRef(true);
 
   const isLargeTree = members.length > 100;
 
@@ -49,6 +51,17 @@ export default function FamilyTree({
     update();
     window.addEventListener('resize', update);
     return () => window.removeEventListener('resize', update);
+  }, []);
+
+  // Cleanup on unmount
+  useEffect(() => {
+    return () => {
+      mountedRef.current = false;
+      // Cleanup D3 zoom behavior
+      if (zoomRef.current) {
+        zoomRef.current.on("zoom", null);
+      }
+    };
   }, []);
 
   // Render tree
@@ -65,7 +78,7 @@ export default function FamilyTree({
       onSelectMember,
       onAddRelative,
       isLargeTree
-    }, memberPositionsRef);
+    }, memberPositionsRef, renderedNodesRef);
 
     if (zoom) {
       zoomRef.current = zoom;
@@ -73,7 +86,7 @@ export default function FamilyTree({
       
       // Fit to view after render
       setTimeout(() => {
-        if (svgRef.current && zoomRef.current) {
+        if (mountedRef.current && svgRef.current && zoomRef.current) {
           const treeData = buildTreeHierarchy(members);
             const hierarchy = d3.hierarchy(treeData);
             const treeLayout = d3.tree<any>().nodeSize([200*2+80, 90+140]);
@@ -81,7 +94,7 @@ export default function FamilyTree({
             const nodes = hierarchy.descendants().filter((d: any) => !d.data.isVirtual) as any[];
           fitTreeToView(d3.select(svgRef.current), zoom, nodes, dimensions.width, dimensions.height);
         }
-        setIsRendering(false);
+        if (mountedRef.current) setIsRendering(false);
       }, 100);
     }
   }, [members, dimensions, searchTerm]);
@@ -90,7 +103,7 @@ export default function FamilyTree({
   useEffect(() => {
     const handleKey = (e: KeyboardEvent) => {
       if ((e.target as HTMLElement).tagName === 'INPUT') return;
-      const nodes = members;
+      const nodes = renderedNodesRef.current;
       let idx = selectedNodeIndex;
       
       if (e.key === 'ArrowDown' || e.key === 'j') {
@@ -101,7 +114,11 @@ export default function FamilyTree({
         idx = Math.max(idx - 1, 0);
       } else if (e.key === 'Enter' || e.key === 'o') {
         e.preventDefault();
-        if (idx >= 0 && idx < nodes.length) onSelectMember(nodes[idx]);
+        if (idx >= 0 && idx < nodes.length) {
+          const node = nodes[idx];
+          if (node.data.member) onSelectMember(node.data.member);
+          else if (node.data.spouse) onSelectMember(node.data.spouse);
+        }
       } else if (e.key === 'Escape') {
         idx = -1;
       }
@@ -110,22 +127,25 @@ export default function FamilyTree({
         setSelectedNodeIndex(idx);
         const node = nodes[idx];
         if (node && svgRef.current && zoomRef.current) {
-          const pos = memberPositionsRef.current.get(node.id);
-          if (pos) {
-            const svg = d3.select(svgRef.current);
-            const w = containerRef.current?.clientWidth || 800;
-            const h = containerRef.current?.clientHeight || 600;
-            svg.transition().duration(300).call(
-              zoomRef.current.transform,
-              d3.zoomIdentity.translate(w/2 - pos.x * zoomLevel, h/2 - pos.y * zoomLevel).scale(zoomLevel)
-            );
+          const memberId = node.data.member?.id || node.data.spouse?.id;
+          if (memberId) {
+            const pos = memberPositionsRef.current.get(memberId);
+            if (pos) {
+              const svg = d3.select(svgRef.current);
+              const w = containerRef.current?.clientWidth || 800;
+              const h = containerRef.current?.clientHeight || 600;
+              svg.transition().duration(300).call(
+                zoomRef.current.transform,
+                d3.zoomIdentity.translate(w/2 - pos.x * zoomLevel, h/2 - pos.y * zoomLevel).scale(zoomLevel)
+              );
+            }
           }
         }
       }
     };
     window.addEventListener('keydown', handleKey);
     return () => window.removeEventListener('keydown', handleKey);
-  }, [members, selectedNodeIndex, onSelectMember, zoomLevel]);
+  }, [selectedNodeIndex, onSelectMember, zoomLevel]);
 
   const handleZoomIn = () => svgRef.current && zoomRef.current && d3.select(svgRef.current).transition().duration(300).call(zoomRef.current.scaleBy, 1.3);
   const handleZoomOut = () => svgRef.current && zoomRef.current && d3.select(svgRef.current).transition().duration(300).call(zoomRef.current.scaleBy, 0.7);

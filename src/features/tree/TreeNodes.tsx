@@ -73,11 +73,13 @@ export const renderNodes = (
     .attr("font-weight", "600")
     .text((d: MemberNode) => {
       const name = d.data.name || '';
-      const parts = name.split(' ');
-      if (parts.length >= 2) {
-        return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+      const parts = name.trim().split(/\s+/);
+      if (parts.length >= 2 && parts[0] && parts[parts.length - 1]) {
+        const first = parts[0][0]?.toUpperCase() || '';
+        const last = parts[parts.length - 1][0]?.toUpperCase() || '';
+        return first + last;
       }
-      return name.substring(0, 2).toUpperCase();
+      return name.substring(0, 2).toUpperCase() || '??';
     });
 
   // Name
