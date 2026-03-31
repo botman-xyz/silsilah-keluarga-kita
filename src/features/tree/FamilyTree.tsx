@@ -195,17 +195,20 @@ export default function FamilyTree({
     zoomRef.current = zoom;
     svg.call(zoom);
 
-    // Use memoized member map for lookups
-    const memberMap = useMemo(() => new Map(members.map(m => [m.id, m])), [members]);
+    // Use a local ref to store the member map to avoid calling hooks inside useEffect
+    // This is a workaround for the React hooks rules
+    const memberMapRef = useRef(new Map(members.map(m => [m.id, m])));
+    // Update the ref when members change
+    memberMapRef.current = new Map(members.map(m => [m.id, m]));
     
-    // 1. Build hierarchy using memoized member map (avoids O(n) rebuild on every render)
+    // 1. Build hierarchy using ref-based member map (avoids O(n) rebuild on every render)
     const coveredMembers = new Set<string>();
     
     const buildHierarchy = useCallback((memberId: string, parentPath: string = "root", visited: Set<string> = new Set()): any[] => {
       // Prevent infinite recursion
       if (visited.has(memberId)) return [];
       
-      const member = memberMap.get(memberId);
+      const member = memberMapRef.current.get(memberId);
       if (!member) return [];
 
       const newVisited = new Set(visited);
@@ -237,8 +240,8 @@ export default function FamilyTree({
 
       // Create a node for each spouse relationship that has children or is the current spouse
       spouseIds.forEach(spouseId => {
-        if (!memberMap.has(spouseId)) return;
-        const spouse = memberMap.get(spouseId)!;
+        if (!memberMapRef.current.has(spouseId)) return;
+        const spouse = memberMapRef.current.get(spouseId)!;
         const coupleChildren = childrenByOtherParent.get(spouseId) || [];
         
         // Only create a couple node if they have children together OR it's the primary spouse
@@ -281,7 +284,7 @@ export default function FamilyTree({
       }
 
       return nodes;
-    }, [memberMap, members]);
+    }, [members]);
     
     // Continue with existing code... (virtualRoot, roots, etc)
 
@@ -295,8 +298,8 @@ export default function FamilyTree({
 
     // Find roots (people without parents in the list)
     const roots = members.filter(m => 
-      (!m.fatherId || !memberMap.has(m.fatherId)) && 
-      (!m.motherId || !memberMap.has(m.motherId))
+      (!m.fatherId || !memberMapRef.current.has(m.fatherId)) && 
+      (!m.motherId || !memberMapRef.current.has(m.motherId))
     );
 
     const startRoots = roots.length > 0 ? roots : (members.length > 0 ? [members[0]] : []);
