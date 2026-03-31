@@ -257,18 +257,58 @@ export function useAppHandlers({
             // and try to find in all members
             const foundInAll = allMembers.find(m => m.id === memberData.id);
             if (foundInAll) {
-              // Member exists but in different family - update their familyId to current family
-              // This handles cases like "menantu" (daughter-in-law/son-in-law) from another family
-              console.log('Member found in different family, updating familyId:', foundInAll.familyId, '->', selectedFamily.id);
-              
-              // Update with correct familyId
-              await memberService.updateMember(selectedFamily.id, memberData.id!, {
-                ...memberData,
-                familyId: selectedFamily.id,
-                updatedAt: new Date().toISOString()
-              });
-              toast.success('Anggota keluarga dipindahkan ke keluarga ini');
-              return;
+              // Only proceed if the member is actually in a different family
+              if (foundInAll.familyId !== selectedFamily.id) {
+                // Member exists but in different family - need to update using their original familyId
+                // Then update their familyId to move them to the current family
+                console.log('Member found in different family, updating familyId:', foundInAll.familyId, '->', selectedFamily.id);
+                
+                // Update using the ORIGINAL familyId where the document actually exists
+                await memberService.updateMember(foundInAll.familyId, memberData.id!, {
+                  ...memberData,
+                  familyId: selectedFamily.id,
+                  updatedAt: new Date().toISOString()
+                });
+                toast.success('Anggota keluarga dipindahkan ke keluarga ini');
+                return;
+              } else {
+                // Member's familyId in database already matches current family but document not found
+                // This is a data inconsistency - automatically recreate the member
+                console.warn('Member familyId matches but document not found - attempting automatic recreation');
+                try {
+                  // Build object with only defined values to avoid Firestore errors
+                  const memberDataToSave: Record<string, unknown> = {
+                    familyId: selectedFamily.id,
+                    createdBy: user.uid,
+                    updatedAt: new Date().toISOString()
+                  };
+                  
+                  // Only add fields that have values
+                  if (memberData.name) memberDataToSave.name = memberData.name;
+                  else memberDataToSave.name = 'Unknown';
+                  
+                  if (memberData.gender) memberDataToSave.gender = memberData.gender;
+                  else memberDataToSave.gender = 'other';
+                  
+                  if (memberData.birthDate) memberDataToSave.birthDate = memberData.birthDate;
+                  if (memberData.deathDate) memberDataToSave.deathDate = memberData.deathDate;
+                  if (memberData.fatherId) memberDataToSave.fatherId = memberData.fatherId;
+                  if (memberData.motherId) memberDataToSave.motherId = memberData.motherId;
+                  if (memberData.spouseId) memberDataToSave.spouseId = memberData.spouseId;
+                  if (memberData.maritalStatus) memberDataToSave.maritalStatus = memberData.maritalStatus;
+                  if (memberData.marriageDate) memberDataToSave.marriageDate = memberData.marriageDate;
+                  if (memberData.bio) memberDataToSave.bio = memberData.bio;
+                  if (memberData.photoUrl) memberDataToSave.photoUrl = memberData.photoUrl;
+                  
+                  await memberService.createMember(selectedFamily.id, memberDataToSave as Omit<Member, 'id'>);
+                  toast.success('Anggota keluarga berhasil dipulihkan');
+                  return;
+                } catch (recreateError) {
+                  console.error('Failed to recreate member:', recreateError);
+                  toast.error('Data anggota tidak konsisten dengan database. Silakan hapus dan buat ulang anggota ini.');
+                  return;
+                }
+              }
             }
             toast.error('Anggota keluarga tidak ditemukan');
             return;
