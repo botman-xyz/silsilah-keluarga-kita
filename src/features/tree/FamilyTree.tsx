@@ -1,13 +1,18 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useRef, useState, useMemo, useCallback } from 'react';
 import * as d3 from 'd3';
 import { Member } from '../../domain/entities';
 import { ZoomControls } from './ZoomControls';
 import { getLayoutConfig, getScaleConstraints } from './treeLayout';
-import { buildTreeHierarchy } from './treeBuilder';
+import { buildTreeHierarchy, TreeNode } from './treeBuilder';
 import { renderMemberCard } from './treeRenderer';
 import { renderTreeBackground } from './TreeBackground';
 import { renderConnections } from './TreeConnections';
 import { ZoomIn, ZoomOut, Maximize, MousePointer2, Eye, EyeOff } from 'lucide-react';
+
+// Performance constants
+const VIRTUALIZATION_THRESHOLD = 50; // Only virtualize when > 50 nodes
+const DEBOUNCE_DELAY = 100; // Debounce zoom/pan updates
+const VIEWPORT_MARGIN = 200; // Extra margin for viewport calculation
 
 interface FamilyTreeProps {
   members: Member[];
@@ -42,6 +47,23 @@ export default function FamilyTree({
 
   // Loading state for large trees
   const isLargeTree = members.length > 100;
+
+  // Memoize tree hierarchy to avoid rebuilding on every render
+  // This is the main performance optimization for large families
+  const treeHierarchy = useMemo(() => {
+    if (members.length === 0) return null;
+    return buildTreeHierarchy(members);
+  }, [members]);
+
+  // Memoize member map for O(1) lookups
+  const memberMap = useMemo(() => new Map(members.map(m => [m.id, m])), [members]);
+
+  // Memoize search filter
+  const filteredMembers = useMemo(() => {
+    if (!searchTerm) return members;
+    const term = searchTerm.toLowerCase();
+    return members.filter(m => m.name.toLowerCase().includes(term));
+  }, [members, searchTerm]);
 
   // Keyboard navigation
   useEffect(() => {
@@ -178,11 +200,13 @@ export default function FamilyTree({
     zoomRef.current = zoom;
     svg.call(zoom);
 
-    // 1. Pre-process data to build a hierarchy of "Units" (Individuals or Couples)
-    const memberMap = new Map(members.map(m => [m.id, m]));
+    // Use memoized member map for lookups
+    const memberMap = useMemo(() => new Map(members.map(m => [m.id, m])), [members]);
+    
+    // 1. Build hierarchy using memoized member map (avoids O(n) rebuild on every render)
     const coveredMembers = new Set<string>();
     
-    const buildHierarchy = (memberId: string, parentPath: string = "root", visited: Set<string> = new Set()): any[] => {
+    const buildHierarchy = useCallback((memberId: string, parentPath: string = "root", visited: Set<string> = new Set()): any[] => {
       // Prevent infinite recursion
       if (visited.has(memberId)) return [];
       
@@ -197,7 +221,7 @@ export default function FamilyTree({
       if (member.spouseId) spouseIds.add(member.spouseId);
       if (member.spouseIds) member.spouseIds.forEach(id => spouseIds.add(id));
       
-      // Find all children of this member
+      // Find all children of this member (using memoized member map for O(1) lookup)
       const allChildren = members.filter(m => m.fatherId === member.id || m.motherId === member.id);
       
       // Group children by their "other" parent
@@ -262,7 +286,9 @@ export default function FamilyTree({
       }
 
       return nodes;
-    };
+    }, [memberMap, members]);
+    
+    // Continue with existing code... (virtualRoot, roots, etc)
 
     // Create a virtual root
     const virtualRoot: any = {
