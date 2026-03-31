@@ -9,23 +9,26 @@ import { useZoomControls } from './hooks/useZoomControls';
 import { ZoomIn, ZoomOut, Maximize, MousePointer2, Eye, EyeOff } from 'lucide-react';
 
 interface FamilyTreeProps {
-  members: Member[];
-  searchTerm?: string;
-  onSelectMember: (member: Member) => void;
-  onAddRelative?: (member: Member) => void;
-  onFamilySelect?: (familyId: string) => void;
-  isHeaderHidden?: boolean;
-  onToggleHeader?: () => void;
-  treePov?: 'suami' | 'istri';
+   members: Member[];
+   searchTerm?: string;
+   onSelectMember: (member: Member) => void;
+   onAddRelative?: (member: Member) => void;
+   onFamilySelect?: (familyId: string) => void;
+   isHeaderHidden?: boolean;
+   onToggleHeader?: () => void;
+   treePov?: 'suami' | 'istri';
+   onTogglePov?: (pov: 'suami' | 'istri') => void;
 }
 
-export default function FamilyTree({ 
-  members, 
-  searchTerm = "", 
-  onSelectMember, 
-  onAddRelative,
-  isHeaderHidden = false,
-  onToggleHeader
+export default function FamilyTree({
+   members,
+   searchTerm = "",
+   onSelectMember,
+   onAddRelative,
+   isHeaderHidden = false,
+   onToggleHeader,
+   treePov = 'suami',
+   onTogglePov
 }: FamilyTreeProps) {
   const svgRef = useRef<SVGSVGElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -37,7 +40,6 @@ export default function FamilyTree({
   const [dimensions, setDimensions] = useState({ width: 0, height: 0 });
   const [isRendering, setIsRendering] = useState(false);
   const [selectedNodeIndex, setSelectedNodeIndex] = useState(-1);
-  const [localTreePov, setTreePov] = useState<'suami' | 'istri'>('suami');
   const mountedRef = useRef(true);
 
   const isLargeTree = members.length > 100;
@@ -80,23 +82,28 @@ export default function FamilyTree({
     if (isLargeTree) setIsRendering(true);
 
     const zoom = renderTree(d3.select(svgRef.current), {
-      width: dimensions.width,
-      height: dimensions.height,
-      members,
-      searchTerm,
-      onSelectMember,
-      onAddRelative,
-      isLargeTree
-    }, memberPositionsRef, renderedNodesRef);
+       width: dimensions.width,
+       height: dimensions.height,
+       members,
+       searchTerm,
+       onSelectMember,
+       onAddRelative,
+       isLargeTree,
+       treePov
+     }, memberPositionsRef, renderedNodesRef);
 
     if (zoom) {
+      // Remove previous zoom listener if it exists
+      if (zoomRef.current) {
+        zoomRef.current.on("zoom", null);
+      }
       zoomRef.current = zoom;
       zoom.on("zoom", (event: any) => setZoomLevel(event.transform.k));
       
       // Fit to view after render
       setTimeout(() => {
         if (mountedRef.current && svgRef.current && zoomRef.current) {
-          const treeData = buildTreeHierarchy(members);
+          const treeData = buildTreeHierarchy(members, treePov);
             const hierarchy = d3.hierarchy(treeData);
             const treeLayout = d3.tree<any>().nodeSize([200*2+80, 90+140]);
             treeLayout(hierarchy);
@@ -106,7 +113,7 @@ export default function FamilyTree({
         if (mountedRef.current) setIsRendering(false);
       }, 100);
     }
-  }, [members, dimensions, searchTerm]);
+  }, [members, dimensions, searchTerm, treePov]);
 
   // Keyboard navigation
   useEffect(() => {
@@ -170,33 +177,16 @@ export default function FamilyTree({
       
       <svg ref={svgRef} className="w-full h-full family-tree-svg" tabIndex={0} />
       
-      {/* Zoom Controls */}
-      <div className="absolute bottom-6 right-6 flex flex-col gap-2">
-        <div className="bg-white rounded-2xl shadow-xl border border-slate-200 p-1.5 flex flex-col gap-1">
-          <button onClick={handleZoomIn} className="p-2.5 hover:bg-slate-50 text-slate-600 rounded-xl" title="Perbesar">
-            <ZoomIn className="w-5 h-5" />
-          </button>
-          <div className="h-px bg-slate-100 mx-2" />
-          <button onClick={handleZoomOut} className="p-2.5 hover:bg-slate-50 text-slate-600 rounded-xl" title="Perkecil">
-            <ZoomOut className="w-5 h-5" />
-          </button>
-          <div className="h-px bg-slate-100 mx-2" />
-          <button onClick={handleResetZoom} className="p-2.5 hover:bg-slate-50 text-slate-600 rounded-xl" title="Fit ke Layar">
-            <Maximize className="w-5 h-5" />
-          </button>
-          {onToggleHeader && (
-            <>
-              <div className="h-px bg-slate-100 mx-2" />
-              <button onClick={onToggleHeader} className="p-2.5 hover:bg-slate-50 text-slate-600 rounded-xl">
-                {isHeaderHidden ? <Eye className="w-5 h-5" /> : <EyeOff className="w-5 h-5" />}
-              </button>
-            </>
-          )}
-        </div>
-        <div className="bg-white rounded-xl shadow-lg border border-slate-200 px-3 py-1.5 text-[10px] font-bold text-slate-400 text-center">
-          {Math.round(zoomLevel * 100)}%
-        </div>
-      </div>
+      <ZoomControls
+        zoomLevel={zoomLevel}
+        isHeaderHidden={isHeaderHidden}
+        treePov={treePov}
+        onZoomIn={handleZoomIn}
+        onZoomOut={handleZoomOut}
+        onResetZoom={handleResetZoom}
+        onToggleHeader={onToggleHeader}
+        onTogglePov={onTogglePov}
+      />
 
       {/* Tip */}
       <div className="absolute top-4 left-4 bg-white/80 backdrop-blur-sm px-4 py-2 rounded-full border border-slate-200 shadow-sm flex items-center gap-2 pointer-events-none">

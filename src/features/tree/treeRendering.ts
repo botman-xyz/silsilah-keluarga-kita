@@ -10,25 +10,26 @@ import { TreeNode, buildTreeHierarchy } from './treeBuilder';
 import { getLayoutConfig, calculateFitScale } from './treeLayout';
 
 export interface RenderConfig {
-  width: number;
-  height: number;
-  members: Member[];
-  searchTerm: string;
-  onSelectMember: (member: Member) => void;
-  onAddRelative?: (member: Member) => void;
-  isLargeTree: boolean;
+   width: number;
+   height: number;
+   members: Member[];
+   searchTerm: string;
+   onSelectMember: (member: Member) => void;
+   onAddRelative?: (member: Member) => void;
+   isLargeTree: boolean;
+   treePov?: 'suami' | 'istri';
 }
 
 /**
  * Main render function - renders the entire tree
  */
 export function renderTree(
-  svgElement: d3.Selection<SVGSVGElement, unknown, null, undefined>,
-  config: RenderConfig,
-  memberPositionsRef: React.MutableRefObject<Map<string, { x: number; y: number }>>,
-  renderedNodesRef?: React.MutableRefObject<any[]>
+   svgElement: d3.Selection<SVGSVGElement, unknown, null, undefined>,
+   config: RenderConfig,
+   memberPositionsRef: React.MutableRefObject<Map<string, { x: number; y: number }>>,
+   renderedNodesRef?: React.MutableRefObject<any[]>
 ): d3.ZoomBehavior<SVGSVGElement, unknown> | null {
-  const { width, height, members, searchTerm, onSelectMember, onAddRelative } = config;
+   const { width, height, members, searchTerm, onSelectMember, onAddRelative, treePov = 'suami' } = config;
   const layout = getLayoutConfig(width, height);
   const isMobile = width < 768;
   
@@ -64,7 +65,7 @@ export function renderTree(
   let treeData: TreeNode;
   let hierarchy: d3.HierarchyNode<TreeNode>;
   try {
-    treeData = buildTreeHierarchy(members);
+    treeData = buildTreeHierarchy(members, treePov);
     hierarchy = d3.hierarchy(treeData);
 
     // Layout

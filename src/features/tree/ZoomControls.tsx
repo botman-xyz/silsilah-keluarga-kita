@@ -43,7 +43,7 @@ export function ZoomControls({
       )}
       
       <div className="bg-white rounded-2xl shadow-xl border border-slate-200 p-1.5 flex flex-col gap-1">
-        <button 
+        <button
           onClick={onZoomIn}
           className="p-2.5 hover:bg-slate-50 text-slate-600 rounded-xl transition-colors"
           title="Perbesar"

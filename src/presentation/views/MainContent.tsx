@@ -10,34 +10,36 @@ import MemberList from '../../features/member/MemberList';
 import { Users } from 'lucide-react';
 
 interface MainContentProps {
-  viewMode: 'tree' | 'gentree' | 'stats' | 'timeline' | 'calculator' | 'story' | 'list';
-  selectedFamily: Family | null;
-  families: Family[];
-  members: Member[];
-  allMembers: Member[];
-  extendedMembers: Member[];
-  searchTerm: string;
-  isHeaderHidden: boolean;
-  treePov: 'suami' | 'istri';
-  onSelectMember: (member: Member) => void;
-  onAddRelative: (member: Member) => void;
-  onFamilySelect: (id: string) => void;
-  onToggleHeader: () => void;
-  onShowFamilyModal: () => void;
+   viewMode: 'tree' | 'gentree' | 'stats' | 'timeline' | 'calculator' | 'story' | 'list';
+   selectedFamily: Family | null;
+   families: Family[];
+   members: Member[];
+   allMembers: Member[];
+   extendedMembers: Member[];
+   searchTerm: string;
+   isHeaderHidden: boolean;
+   treePov: 'suami' | 'istri';
+   onSelectMember: (member: Member) => void;
+   onAddRelative: (member: Member) => void;
+   onFamilySelect: (id: string) => void;
+   onToggleHeader: () => void;
+   onTogglePov?: (pov: 'suami' | 'istri') => void;
+   onShowFamilyModal: () => void;
 }
 
 export const MainContent: React.FC<MainContentProps> = ({
-  viewMode,
-  selectedFamily,
-  families,
-  members,
-  allMembers,
-  extendedMembers,
-  searchTerm,
-  isHeaderHidden,
-  treePov,
-  onSelectMember,
-  onAddRelative,
+   viewMode,
+   selectedFamily,
+   families,
+   members,
+   allMembers,
+   extendedMembers,
+   searchTerm,
+   isHeaderHidden,
+   treePov,
+   onSelectMember,
+   onAddRelative,
+   onTogglePov,
   onFamilySelect,
   onToggleHeader,
   onShowFamilyModal,
@@ -65,16 +67,17 @@ export const MainContent: React.FC<MainContentProps> = ({
       case 'tree':
         return (
           <div className="h-full relative overflow-hidden">
-            <FamilyTree 
-              members={extendedMembers} 
-              searchTerm={searchTerm}
-              onSelectMember={onSelectMember} 
-              onAddRelative={onAddRelative}
-              onFamilySelect={onFamilySelect}
-              isHeaderHidden={isHeaderHidden}
-              onToggleHeader={onToggleHeader}
-              treePov={treePov}
-            />
+            <FamilyTree
+               members={extendedMembers}
+               searchTerm={searchTerm}
+               onSelectMember={onSelectMember}
+               onAddRelative={onAddRelative}
+               onFamilySelect={onFamilySelect}
+               isHeaderHidden={isHeaderHidden}
+               onToggleHeader={onToggleHeader}
+               treePov={treePov}
+               onTogglePov={onTogglePov}
+             />
           </div>
         );
       case 'gentree':

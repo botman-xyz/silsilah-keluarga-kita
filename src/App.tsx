@@ -308,6 +308,7 @@ export default function App() {
               if (fam) setSelectedFamily(fam);
             }}
             onToggleHeader={() => setIsHeaderHidden(!isHeaderHidden)}
+            onTogglePov={setTreePov}
             onShowFamilyModal={() => setShowFamilyModal(true)}
           />
         </main>

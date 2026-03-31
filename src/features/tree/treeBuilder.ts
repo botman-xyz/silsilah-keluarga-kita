@@ -19,7 +19,8 @@ export interface TreeNode {
  * Build hierarchy from members
  */
 export const buildTreeHierarchy = (
-  members: Member[]
+   members: Member[],
+   treePov: 'suami' | 'istri' = 'suami'
 ): TreeNode => {
   const memberMap = new Map(members.map(m => [m.id, m]));
   const coveredMembers = new Set<string>();
@@ -63,19 +64,33 @@ export const buildTreeHierarchy = (
     const nodes: TreeNode[] = [];
 
     // Create couple nodes
-    spouseIds.forEach(spouseId => {
-      if (!memberMap.has(spouseId)) return;
-      const spouse = memberMap.get(spouseId)!;
-      const coupleChildren = childrenByOtherParent.get(spouseId) || [];
-      
-      if (coupleChildren.length > 0 || member.spouseId === spouseId) {
-        const node: TreeNode = {
-          id: `${parentPath}_${member.id}_${spouse.id}`,
-          type: 'couple',
-          member: member,
-          spouse: spouse,
-          children: []
-        };
+     spouseIds.forEach(spouseId => {
+       if (!memberMap.has(spouseId)) return;
+       const spouse = memberMap.get(spouseId)!;
+       const coupleChildren = childrenByOtherParent.get(spouseId) || [];
+
+       if (coupleChildren.length > 0 || member.spouseId === spouseId) {
+         // Determine member/spouse order based on POV
+         let primaryMember: Member;
+         let secondarySpouse: Member;
+
+         if (treePov === 'suami') {
+           // Husband (male) on left, wife (female) on right
+           primaryMember = member.gender === 'male' ? member : spouse;
+           secondarySpouse = member.gender === 'male' ? spouse : member;
+         } else {
+           // Wife (female) on left, husband (male) on right
+           primaryMember = member.gender === 'female' ? member : spouse;
+           secondarySpouse = member.gender === 'female' ? spouse : member;
+         }
+
+         const node: TreeNode = {
+           id: `${parentPath}_${primaryMember.id}_${secondarySpouse.id}`,
+           type: 'couple',
+           member: primaryMember,
+           spouse: secondarySpouse,
+           children: []
+         };
         
         coupleChildren.forEach(child => {
           const childNodes = buildHierarchy(child.id, node.id, newVisited);

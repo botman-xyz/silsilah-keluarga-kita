@@ -14,29 +14,25 @@ export function useZoomControls({ svgRef, zoomRef, members, dimensions }: UseZoo
     if (svgRef.current && zoomRef.current) {
       d3.select(svgRef.current).transition().duration(300).call(zoomRef.current.scaleBy(1.3));
     }
-  }, [svgRef, zoomRef]);
+  }, []);
 
   const handleZoomOut = useCallback(() => {
     console.log('ZoomOut clicked', { svgRef: !!svgRef.current, zoomRef: !!zoomRef.current });
     if (svgRef.current && zoomRef.current) {
       d3.select(svgRef.current).transition().duration(300).call(zoomRef.current.scaleBy(0.7));
     }
-  }, [svgRef, zoomRef]);
+  }, []);
 
   const handleResetZoom = useCallback(() => {
-    if (svgRef.current && zoomRef.current && members.length > 0) {
-      // Import here to avoid circular dependency
-      import('../treeBuilder').then(({ buildTreeHierarchy }) => {
-        import('../treeRendering').then(({ fitTreeToView }) => {
-          const treeData = buildTreeHierarchy(members);
-          const hierarchy = d3.hierarchy(treeData);
-          d3.tree().nodeSize([200*2+80, 90+140])(hierarchy);
-          const nodes = hierarchy.descendants().filter((d: any) => !d.data.isVirtual);
-          fitTreeToView(d3.select(svgRef.current!), zoomRef.current, nodes, dimensions.width, dimensions.height);
-        });
-      });
+    console.log('ResetZoom clicked', { svgRef: !!svgRef.current, zoomRef: !!zoomRef.current, membersLength: members.length });
+    if (svgRef.current && zoomRef.current) {
+      // Reset to identity transform (no zoom, centered)
+      d3.select(svgRef.current)
+        .transition()
+        .duration(750)
+        .call(zoomRef.current.transform, d3.zoomIdentity);
     }
-  }, [svgRef, zoomRef, members, dimensions]);
+  }, []);
 
   return {
     handleZoomIn,
