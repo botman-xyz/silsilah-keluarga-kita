@@ -5,6 +5,7 @@ import { ZoomControls } from './ZoomControls';
 import { buildTreeHierarchy } from './treeBuilder';
 import { renderTree, fitTreeToView } from './treeRendering';
 import { getLayoutConfig } from './treeLayout';
+import { useZoomControls } from './hooks/useZoomControls';
 import { ZoomIn, ZoomOut, Maximize, MousePointer2, Eye, EyeOff } from 'lucide-react';
 
 interface FamilyTreeProps {
@@ -40,6 +41,14 @@ export default function FamilyTree({
   const mountedRef = useRef(true);
 
   const isLargeTree = members.length > 100;
+
+  // Zoom controls hook
+  const { handleZoomIn, handleZoomOut, handleResetZoom } = useZoomControls({
+    svgRef,
+    zoomRef,
+    members,
+    dimensions
+  });
 
   // Update dimensions
   useEffect(() => {
@@ -147,20 +156,9 @@ export default function FamilyTree({
     return () => window.removeEventListener('keydown', handleKey);
   }, [selectedNodeIndex, onSelectMember, zoomLevel]);
 
-  const handleZoomIn = () => svgRef.current && zoomRef.current && d3.select(svgRef.current).transition().duration(300).call(zoomRef.current.scaleBy, 1.3);
-  const handleZoomOut = () => svgRef.current && zoomRef.current && d3.select(svgRef.current).transition().duration(300).call(zoomRef.current.scaleBy, 0.7);
-  const handleResetZoom = () => {
-    if (svgRef.current && zoomRef.current && members.length > 0) {
-      const treeData = buildTreeHierarchy(members);
-      const hierarchy = d3.hierarchy(treeData);
-      d3.tree().nodeSize([200*2+80, 90+140])(hierarchy);
-      const nodes = hierarchy.descendants().filter(d => !d.data.isVirtual);
-      fitTreeToView(d3.select(svgRef.current), zoomRef.current, nodes, dimensions.width, dimensions.height);
-    }
-  };
 
   return (
-    <div ref={containerRef} className="w-full h-full bg-slate-50 rounded-xl border border-slate-200 overflow-hidden relative">
+    <div ref={containerRef} className="w-full h-full bg-slate-50 rounded-xl border border-slate-200 relative">
       {isRendering && (
         <div className="absolute inset-0 z-20 flex items-center justify-center bg-slate-50/90">
           <div className="flex flex-col items-center gap-3">
@@ -170,11 +168,7 @@ export default function FamilyTree({
         </div>
       )}
       
-      <div className="overflow-auto w-full h-full scrollbar-thin scrollbar-thumb-slate-300 scrollbar-track-slate-100">
-        <div className="min-w-[3000px] min-h-[2000px] relative">
-          <svg ref={svgRef} className="w-full h-full family-tree-svg absolute top-0 left-0" tabIndex={0} />
-        </div>
-      </div>
+      <svg ref={svgRef} className="w-full h-full family-tree-svg" tabIndex={0} />
       
       {/* Zoom Controls */}
       <div className="absolute bottom-6 right-6 flex flex-col gap-2">

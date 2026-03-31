@@ -45,11 +45,15 @@ export function renderTree(
   
   // Setup SVG with larger canvas and performance optimizations
   const svg = svgElement
-    .attr("width", canvasWidth)
-    .attr("height", canvasHeight)
+    .attr("width", width)
+    .attr("height", height)
     .attr("viewBox", `0 0 ${canvasWidth} ${canvasHeight}`)
-    .attr("preserveAspectRatio", "xMidYMid meet")
-    .style("will-change", "transform"); // GPU acceleration hint
+    .attr("preserveAspectRatio", "xMidYMin meet")
+    .style("will-change", "transform") // GPU acceleration hint
+    .style("pointer-events", "all") // Ensure all pointer events are captured
+    .style("position", "absolute")
+    .style("top", "0")
+    .style("left", "0");
   
   const g = svg.append("g");
   
@@ -353,9 +357,11 @@ function renderMemberCard(
 function setupZoom(svg: d3.Selection<SVGSVGElement, unknown, null, undefined>, g: d3.Selection<SVGGElement, unknown, null, undefined>) {
   const zoom = d3.zoom<SVGSVGElement, unknown>()
     .scaleExtent([0.02, 8])
-    .on("zoom", (event) => g.attr("transform", event.transform));
-  
-  svg.call(zoom);
+    .on("zoom", (event) => g.attr("transform", event.transform))
+    .on("start", () => svg.style("cursor", "grabbing"))
+    .on("end", () => svg.style("cursor", "grab"));
+
+  svg.call(zoom).style("cursor", "grab");
   return zoom;
 }
 
