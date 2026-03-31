@@ -6,9 +6,6 @@ service cloud.firestore {
     // 🔒 DEFAULT DENY (GLOBAL SECURITY)
     // Open/Closed Principle: mudah extends dengan match spesifik
     // =========================================
-    match /{document=**} {
-      allow read, write: if true; // DEBUG: Allow all for testing
-    }
 
     // =========================================
     // 🧠 BASE HELPERS (Single Responsibility)
