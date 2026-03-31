@@ -69,10 +69,46 @@ export class FirebaseMemberRepository implements IMemberRepository {
   async update(familyId: string, memberId: string, data: Partial<Member>): Promise<void> {
     try {
       const docRef = doc(db, 'families', familyId, 'people', memberId);
+      
+      // Check if document exists before updating
+      const docSnap = await getDoc(docRef);
+      if (!docSnap.exists()) {
+        // Check if member exists in a different family (mantu scenario)
+        // Search across all families to find the member
+        const allFamilies = await this.getAllFamilies();
+        for (const familyId of allFamilies) {
+          const memberDocRef = doc(db, 'families', familyId, 'people', memberId);
+          const memberSnap = await getDoc(memberDocRef);
+          if (memberSnap.exists()) {
+            const memberData = memberSnap.data() as Member;
+            // Member exists in different family - this is a mantu (in-law) scenario
+            // Update the member in their original family first
+            await updateDoc(memberDocRef, data as Record<string, unknown>);
+            return;
+          }
+        }
+        // Document doesn't exist anywhere - log and skip silently
+        console.warn(`Document not found: families/${familyId}/people/${memberId}`);
+        return;
+      }
+      
       await updateDoc(docRef, data as Record<string, unknown>);
     } catch (error) {
       handleFirestoreError(error, OperationType.UPDATE, `families/${familyId}/members/${memberId}`);
       throw error;
+    }
+  }
+
+  /**
+   * Get all family IDs for cross-family search
+   */
+  private async getAllFamilies(): Promise<string[]> {
+    try {
+      const familiesRef = collection(db, 'families');
+      const snapshot = await getDocs(familiesRef);
+      return snapshot.docs.map(d => d.id);
+    } catch {
+      return [];
     }
   }
 
