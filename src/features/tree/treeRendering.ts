@@ -1,118 +1,101 @@
 /**
- * Tree Rendering Module
- * Handles all D3 rendering logic for the family tree
- * Separated for better maintainability (Single Responsibility Principle)
+ * Tree Rendering - Main Entry Point
+ * Provides a clean API for rendering the family tree
+ * This is the main interface that FamilyTree.tsx should use
  */
 
 import * as d3 from 'd3';
 import { Member } from '../../domain/entities';
-import { TreeNode } from './treeBuilder';
-import { getLayoutConfig } from './treeLayout';
-import { renderMemberCard as createMemberCard } from './treeRenderer';
-import { renderTreeBackground } from './TreeBackground';
-import { renderConnections } from './TreeConnections';
+import { TreeNode, buildTreeHierarchy } from './treeBuilder';
+import { getLayoutConfig, calculateFitScale } from './treeLayout';
 
-export interface TreeRenderingConfig {
+export interface RenderConfig {
   width: number;
   height: number;
   members: Member[];
   searchTerm: string;
   onSelectMember: (member: Member) => void;
   onAddRelative?: (member: Member) => void;
-  treePov: 'suami' | 'istri';
-  memberPositionsRef: React.MutableRefObject<Map<string, { x: number; y: number }>>;
-}
-
-export interface RenderResult {
-  nodes: d3.HierarchyPointNode<TreeNode>[];
-  links: d3.HierarchyPointLink<TreeNode>[];
+  isLargeTree: boolean;
 }
 
 /**
- * Main render function that orchestrates all D3 rendering
+ * Main render function - renders the entire tree
  */
 export function renderTree(
-  svgElement: d3.Selection<null, unknown, null, undefined>,
-  config: TreeRenderingConfig
-): RenderResult {
-  const { width, height, members, searchTerm, onSelectMember, onAddRelative, treePov, memberPositionsRef } = config;
-  
-  // Get layout configuration
+  svgElement: d3.Selection<SVGSVGElement, unknown, null, undefined>,
+  config: RenderConfig,
+  memberPositionsRef: React.MutableRefObject<Map<string, { x: number; y: number }>>
+): d3.ZoomBehavior<SVGSVGElement, unknown> | null {
+  const { width, height, members, searchTerm, onSelectMember, onAddRelative } = config;
   const layout = getLayoutConfig(width, height);
-  const { nodeWidth, nodeHeight, horizontalSpacing, verticalSpacing } = layout;
   const isMobile = width < 768;
-
-  // Setup SVG
+  
+  // Use larger canvas size for scrollable content
+  const canvasWidth = 3000;
+  const canvasHeight = 2000;
+  
+  // Clear previous content
+  svgElement.selectAll("*").remove();
+  
+  // Setup SVG with larger canvas
   const svg = svgElement
-    .attr("width", "100%")
-    .attr("height", "100%")
-    .attr("viewBox", `0 0 ${width} ${height}`);
-
+    .attr("width", canvasWidth)
+    .attr("height", canvasHeight)
+    .attr("viewBox", `0 0 ${canvasWidth} ${canvasHeight}`)
+    .attr("preserveAspectRatio", "xMidYMid meet");
+  
   const g = svg.append("g");
-
-  // Render grid background
-  renderGridBackground(g, isMobile);
-
-  // Build tree data
-  const { virtualRoot } = buildVirtualTree(members);
-
-  // Create hierarchy
-  const hierarchy = d3.hierarchy(virtualRoot);
+  
+  // Render grid
+  renderGrid(g, isMobile);
+  
+  // Build hierarchy
+  const treeData = buildTreeHierarchy(members);
+  const hierarchy = d3.hierarchy(treeData);
   
   // Layout
   const treeLayout = d3.tree<TreeNode>()
-    .nodeSize([nodeWidth * 2 + horizontalSpacing, nodeHeight + verticalSpacing]);
-  
+    .nodeSize([layout.nodeWidth * 2 + layout.horizontalSpacing, layout.nodeHeight + layout.verticalSpacing]);
   treeLayout(hierarchy);
-
-  // Filter nodes and links
+  
+  // Filter nodes
   const nodes = hierarchy.descendants().filter(d => !d.data.isVirtual) as d3.HierarchyPointNode<TreeNode>[];
-  const links = hierarchy.links().filter(l => 
-    !l.source.data.isVirtual && !l.target.data.isVirtual
-  ) as d3.HierarchyPointLink<TreeNode>[];
-
-  // Store positions for keyboard navigation
+  const links = hierarchy.links().filter(l => !l.source.data.isVirtual && !l.target.data.isVirtual) as d3.HierarchyPointLink<TreeNode>[];
+  
+  // Store positions
   nodes.forEach(d => {
     if (d.data.member?.id) {
       memberPositionsRef.current.set(d.data.member.id, { x: d.x, y: d.y });
     }
   });
-
+  
   // Render generation backgrounds
-  renderGenerationBackgrounds(g, nodes, nodeHeight, isMobile);
-
+  renderGenBackgrounds(g, nodes, layout.nodeHeight, isMobile);
+  
   // Render connections
-  renderTreeConnections(g, links, nodeWidth, nodeHeight);
-
-  // Render member nodes
-  renderTreeNodes(g, nodes, {
-    nodeWidth,
-    nodeHeight,
+  renderLinks(g, links, layout.nodeWidth, layout.nodeHeight);
+  
+  // Render nodes
+  renderNodes(g, nodes, {
+    nodeWidth: layout.nodeWidth,
+    nodeHeight: layout.nodeHeight,
     isMobile,
     searchTerm,
     onSelectMember,
     onAddRelative
   });
-
-  return { nodes, links };
-}
-
-/**
- * Build virtual tree structure from members
- */
-function buildVirtualTree(members: Member[]) {
-  // Import dynamically to avoid circular dependencies
-  const { buildTreeHierarchy } = require('./treeBuilder');
-  return buildTreeHierarchy(members);
+  
+  // Setup zoom
+  const zoom = setupZoom(svg, g);
+  
+  return zoom;
 }
 
 /**
  * Render grid background
  */
-function renderGridBackground(
-  g: d3.Selection<SVGGElement, unknown, null, undefined>,
-  isMobile: boolean
-) {
+function renderGrid(g: d3.Selection<SVGGElement, unknown, null, undefined>, isMobile: boolean) {
   const gridSize = 40;
   const gridLimit = 5000;
   const gridGroup = g.append("g").attr("class", "grid-bg");
@@ -132,7 +115,7 @@ function renderGridBackground(
 /**
  * Render generation backgrounds
  */
-function renderGenerationBackgrounds(
+function renderGenBackgrounds(
   g: d3.Selection<SVGGElement, unknown, null, undefined>,
   nodes: d3.HierarchyPointNode<TreeNode>[],
   nodeHeight: number,
@@ -168,13 +151,13 @@ function renderGenerationBackgrounds(
 /**
  * Render tree connections
  */
-function renderTreeConnections(
+function renderLinks(
   g: d3.Selection<SVGGElement, unknown, null, undefined>,
   links: d3.HierarchyPointLink<TreeNode>[],
   nodeWidth: number,
   nodeHeight: number
 ) {
-  const linkGenerator = d3.linkVertical<d3.HierarchyPointLink<TreeNode>, d3.HierarchyPointNode<TreeNode>>()
+  const linkGen = d3.linkVertical<d3.HierarchyPointLink<TreeNode>, d3.HierarchyPointNode<TreeNode>>()
     .x((d: any) => d.x)
     .y((d: any) => d.y);
 
@@ -185,37 +168,25 @@ function renderTreeConnections(
     .attr("class", "link")
     .attr("fill", "none")
     .attr("stroke", (d: any) => {
-      const sourceType = d.source.data.type;
-      const targetType = d.target.data.type;
-      
-      if (sourceType === 'couple' && targetType === 'individual') return "#94a3b8";
-      if (sourceType === 'couple' && targetType === 'couple') return "#64748b";
+      const s = d.source.data.type, t = d.target.data.type;
+      if (s === 'couple' && t === 'individual') return "#94a3b8";
+      if (s === 'couple' && t === 'couple') return "#64748b";
       return "#cbd5e1";
     })
     .attr("stroke-width", 2.5)
     .attr("stroke-dasharray", (d: any) => d.target.data.type === 'couple' ? "0" : "5,3")
     .attr("d", (d: any) => {
-      const sourceX = d.source.x;
-      const sourceY = d.source.y + nodeHeight / 2;
-      const targetX = d.target.x;
-      const targetY = d.target.y - nodeHeight / 2;
-      const midY = (sourceY + targetY) / 2;
-      return `M${sourceX},${sourceY} C${sourceX},${midY} ${targetX},${midY} ${targetX},${targetY}`;
+      const sx = d.source.x, sy = d.source.y + nodeHeight/2;
+      const tx = d.target.x, ty = d.target.y - nodeHeight/2;
+      return `M${sx},${sy} C${sx},${(sy+ty)/2} ${tx},${(sy+ty)/2} ${tx},${ty}`;
     })
-    .style("transition", "stroke 0.3s ease, stroke-width 0.3s ease")
-    .style("opacity", 0.9)
-    .on("mouseenter", function() { 
-      d3.select(this).attr("stroke", "#3b82f6").attr("stroke-width", 4); 
-    })
-    .on("mouseleave", function() { 
-      d3.select(this).attr("stroke", "#94a3b8").attr("stroke-width", 2.5); 
-    });
+    .style("opacity", 0.9);
 }
 
 /**
- * Render tree nodes
+ * Render all tree nodes
  */
-function renderTreeNodes(
+function renderNodes(
   g: d3.Selection<SVGGElement, unknown, null, undefined>,
   nodes: d3.HierarchyPointNode<TreeNode>[],
   config: {
@@ -227,37 +198,26 @@ function renderTreeNodes(
     onAddRelative?: (member: Member) => void;
   }
 ) {
-  const { nodeWidth, nodeHeight, isMobile, searchTerm, onSelectMember, onAddRelative } = config;
-
-  // Draw family unit backgrounds
-  const familyUnits = nodes.filter(d => d.children && d.children.length > 0);
+  // Family unit backgrounds
+  const families = nodes.filter(d => d.children?.length);
   g.selectAll(".family-unit-bg")
-    .data(familyUnits)
+    .data(families)
     .enter()
     .insert("rect", ":first-child")
-    .attr("x", (d: any) => {
-      const childX = d.children.map((c: any) => c.x);
-      const minX = Math.min(d.x, ...childX) - (d.data.type === 'couple' ? nodeWidth : nodeWidth/2) - 15;
-      return minX;
-    })
-    .attr("y", (d: any) => d.y - nodeHeight/2 - 15)
+    .attr("x", (d: any) => Math.min(d.x, ...d.children.map((c: any) => c.x)) - (d.data.type === 'couple' ? config.nodeWidth : config.nodeWidth/2) - 15)
+    .attr("y", (d: any) => d.y - config.nodeHeight/2 - 15)
     .attr("width", (d: any) => {
       const childX = d.children.map((c: any) => c.x);
-      const minX = Math.min(d.x, ...childX) - (d.data.type === 'couple' ? nodeWidth : nodeWidth/2) - 15;
-      const maxX = Math.max(d.x, ...childX) + (d.data.type === 'couple' ? nodeWidth : nodeWidth/2) + 15;
+      const minX = Math.min(d.x, ...childX) - (d.data.type === 'couple' ? config.nodeWidth : config.nodeWidth/2) - 15;
+      const maxX = Math.max(d.x, ...childX) + (d.data.type === 'couple' ? config.nodeWidth : config.nodeWidth/2) + 15;
       return maxX - minX;
     })
-    .attr("height", (d: any) => {
-      const maxY = Math.max(...d.children.map((c: any) => c.y)) + nodeHeight/2 + 15;
-      return maxY - (d.y - nodeHeight/2 - 15);
-    })
+    .attr("height", (d: any) => Math.max(...d.children.map((c: any) => c.y)) + config.nodeHeight/2 + 15 - (d.y - config.nodeHeight/2 - 15))
     .attr("rx", 20)
     .attr("fill", "rgba(241, 245, 249, 0.3)")
-    .attr("stroke", "rgba(203, 213, 225, 0.2)")
-    .attr("stroke-width", 1)
-    .attr("stroke-dasharray", "4,4");
+    .attr("stroke", "rgba(203, 213, 225, 0.2)");
 
-  // Draw nodes
+  // Member nodes
   const nodeEnter = g.selectAll(".node")
     .data(nodes)
     .enter()
@@ -265,34 +225,21 @@ function renderTreeNodes(
     .attr("class", "node")
     .attr("transform", (d: any) => `translate(${d.x},${d.y})`);
 
-  // Render each member
   nodeEnter.each(function(d: any) {
-    const nodeGroup = d3.select(this);
-    
+    const ng = d3.select(this);
     if (d.data.type === 'couple') {
-      // Render couple - two members side by side
-      const spouseOffset = nodeWidth / 2 + 20;
-      renderMemberNode(nodeGroup, d.data.member, -spouseOffset / 2, {
-        nodeWidth, nodeHeight, isMobile, searchTerm, onSelectMember, onAddRelative
-      });
-      if (d.data.spouse) {
-        renderMemberNode(nodeGroup, d.data.spouse, spouseOffset / 2, {
-          nodeWidth, nodeHeight, isMobile, searchTerm, onSelectMember, onAddRelative
-        });
-      }
+      renderMemberCard(ng, d.data.member, -config.nodeWidth/2 - 20, config);
+      if (d.data.spouse) renderMemberCard(ng, d.data.spouse, config.nodeWidth/2 + 20, config);
     } else {
-      // Render single member
-      renderMemberNode(nodeGroup, d.data.member, 0, {
-        nodeWidth, nodeHeight, isMobile, searchTerm, onSelectMember, onAddRelative
-      });
+      renderMemberCard(ng, d.data.member, 0, config);
     }
   });
 }
 
 /**
- * Render a single member node
+ * Render a single member card
  */
-function renderMemberNode(
+function renderMemberCard(
   parent: d3.Selection<SVGGElement, unknown, null, undefined>,
   member: Member | undefined,
   offsetX: number,
@@ -308,26 +255,20 @@ function renderMemberNode(
   if (!member) return;
   
   const { nodeWidth, nodeHeight, isMobile, searchTerm, onSelectMember, onAddRelative } = config;
+  const isMatch = searchTerm && member.name.toLowerCase().includes(searchTerm.toLowerCase());
+  const accent = member.gender === 'male' ? "#3b82f6" : member.gender === 'female' ? "#ec4899" : "#94a3b8";
+  const bg = member.gender === 'male' ? "#eff6ff" : member.gender === 'female' ? "#fdf2f8" : "#f8fafc";
+  const isMantu = member.isAdoptedChild || !!member.externalFamilyId || !!member.externalSpouseName;
   
   const card = parent.append("g")
     .attr("transform", `translate(${offsetX}, 0)`)
     .style("cursor", "pointer")
-    .on("click", (event: MouseEvent) => {
-      event.stopPropagation();
-      onSelectMember(member);
-    });
+    .on("click", (e: MouseEvent) => { e.stopPropagation(); onSelectMember(member); });
 
-  const isMatch = searchTerm && member.name.toLowerCase().includes(searchTerm.toLowerCase());
-  const accentColor = member.gender === 'male' ? "#3b82f6" : member.gender === 'female' ? "#ec4899" : "#94a3b8";
-  const bgColor = member.gender === 'male' ? "#eff6ff" : member.gender === 'female' ? "#fdf2f8" : "#f8fafc";
-  const isMantu = member.isAdoptedChild || !!member.externalFamilyId || !!member.externalSpouseName;
-
-  // Card background
+  // Background
   card.append("rect")
-    .attr("x", -nodeWidth / 2)
-    .attr("y", -nodeHeight / 2)
-    .attr("width", nodeWidth)
-    .attr("height", nodeHeight)
+    .attr("x", -nodeWidth/2).attr("y", -nodeHeight/2)
+    .attr("width", nodeWidth).attr("height", nodeHeight)
     .attr("rx", isMobile ? 12 : 16)
     .attr("fill", isMantu ? "#fffbeb" : "white")
     .attr("stroke", isMatch ? "#3b82f6" : isMantu ? "#f59e0b" : "#f1f5f9")
@@ -336,118 +277,95 @@ function renderMemberNode(
 
   // Mantu badge
   if (isMantu) {
-    card.append("circle")
-      .attr("cx", nodeWidth / 2 - 12)
-      .attr("cy", -nodeHeight / 2 + 12)
-      .attr("r", 10)
-      .attr("fill", "#f59e0b");
-    card.append("text")
-      .attr("x", nodeWidth / 2 - 12)
-      .attr("y", -nodeHeight / 2 + 12)
-      .attr("dy", "0.35em")
-      .attr("text-anchor", "middle")
-      .attr("fill", "white")
-      .attr("font-size", "10px")
-      .attr("font-weight", "bold")
-      .text("M");
+    card.append("circle").attr("cx", nodeWidth/2 - 12).attr("cy", -nodeHeight/2 + 12).attr("r", 10).attr("fill", "#f59e0b");
+    card.append("text").attr("x", nodeWidth/2 - 12).attr("y", -nodeHeight/2 + 12).attr("dy", "0.35em")
+      .attr("text-anchor", "middle").attr("fill", "white").attr("font-size", "10px").attr("font-weight", "bold").text("M");
   }
 
-  // Top accent bar
+  // Accent bar
   card.append("path")
     .attr("d", `M${-nodeWidth/2 + 12},${-nodeHeight/2} h${nodeWidth - 24} a4,4 0 0 1 4,4 v2 h${-nodeWidth} v-2 a4,4 0 0 1 4,-4`)
-    .attr("fill", accentColor)
-    .attr("opacity", 0.8);
+    .attr("fill", accent).attr("opacity", 0.8);
 
   // Avatar
   const avatarSize = isMobile ? 40 : 52;
-  const avatarX = -nodeWidth / 2 + (isMobile ? 28 : 35);
-  
-  card.append("circle")
-    .attr("cx", avatarX)
-    .attr("cy", 0)
-    .attr("r", avatarSize / 2 + 2)
-    .attr("fill", "white")
-    .attr("stroke", bgColor)
-    .attr("stroke-width", 2);
+  const avatarX = -nodeWidth/2 + (isMobile ? 28 : 35);
+  card.append("circle").attr("cx", avatarX).attr("cy", 0).attr("r", avatarSize/2 + 2).attr("fill", "white").attr("stroke", bg).attr("stroke-width", 2);
 
   if (member.photoUrl) {
     const clipId = `clip-${member.id.replace(/[^a-zA-Z0-9]/g, '')}`;
-    const defs = card.append("defs");
-    defs.append("clipPath")
-      .attr("id", clipId)
-      .append("circle")
-      .attr("cx", avatarX)
-      .attr("cy", 0)
-      .attr("r", avatarSize / 2);
-
-    card.append("image")
-      .attr("xlink:href", member.photoUrl)
-      .attr("crossorigin", "anonymous")
-      .attr("x", avatarX - avatarSize / 2)
-      .attr("y", -avatarSize / 2)
-      .attr("width", avatarSize)
-      .attr("height", avatarSize)
-      .attr("clip-path", `url(#${clipId})`)
-      .attr("preserveAspectRatio", "xMidYMid slice");
+    card.append("defs").append("clipPath").attr("id", clipId).append("circle").attr("cx", avatarX).attr("cy", 0).attr("r", avatarSize/2);
+    card.append("image").attr("xlink:href", member.photoUrl).attr("crossorigin", "anonymous")
+      .attr("x", avatarX - avatarSize/2).attr("y", -avatarSize/2).attr("width", avatarSize).attr("height", avatarSize)
+      .attr("clip-path", `url(#${clipId})`);
   } else {
-    card.append("circle")
-      .attr("cx", avatarX)
-      .attr("cy", 0)
-      .attr("r", avatarSize / 2)
-      .attr("fill", bgColor);
-    card.append("text")
-      .attr("x", avatarX)
-      .attr("y", 0)
-      .attr("dy", "0.35em")
-      .attr("text-anchor", "middle")
-      .attr("class", `${isMobile ? 'text-[14px]' : 'text-base'} font-black`)
-      .attr("fill", accentColor)
-      .text(member.name.charAt(0).toUpperCase());
+    card.append("circle").attr("cx", avatarX).attr("cy", 0).attr("r", avatarSize/2).attr("fill", bg);
+    card.append("text").attr("x", avatarX).attr("y", 0).attr("dy", "0.35em").attr("text-anchor", "middle")
+      .attr("class", `${isMobile ? 'text-[14px]' : 'text-base'} font-black`).attr("fill", accent).text(member.name.charAt(0).toUpperCase());
   }
 
   // Name
-  const textX = -nodeWidth / 2 + (isMobile ? 58 : 75);
-  const maxChars = isMobile ? 12 : 18;
-  const name = member.name.length > maxChars ? member.name.substring(0, maxChars - 2) + "..." : member.name;
-  
-  card.append("text")
-    .attr("x", textX)
-    .attr("y", isMobile ? -10 : -14)
-    .attr("class", `${isMobile ? 'text-[12px]' : 'text-sm'} font-black fill-slate-900`)
-    .text(name);
+  const textX = -nodeWidth/2 + (isMobile ? 58 : 75);
+  const name = member.name.length > (isMobile ? 12 : 18) ? member.name.substring(0, (isMobile ? 12 : 18) - 2) + "..." : member.name;
+  card.append("text").attr("x", textX).attr("y", isMobile ? -10 : -14)
+    .attr("class", `${isMobile ? 'text-[12px]' : 'text-sm'} font-black fill-slate-900`).text(name);
 
   // Birth year
-  const birthYear = member.birthDate ? new Date(member.birthDate).getFullYear() : "?";
-  card.append("text")
-    .attr("x", textX)
-    .attr("y", isMobile ? 8 : 10)
+  card.append("text").attr("x", textX).attr("y", isMobile ? 8 : 10)
     .attr("class", `${isMobile ? 'text-[9px]' : 'text-[11px]'} font-medium fill-slate-500`)
-    .text(birthYear.toString());
+    .text(member.birthDate ? new Date(member.birthDate).getFullYear() : "?");
 
-  // Quick add button
+  // Quick add
   if (onAddRelative) {
-    const addBtn = card.append("g")
-      .attr("transform", `translate(${nodeWidth/2 - 14}, ${-nodeHeight/2 + 14})`)
+    const btn = card.append("g").attr("transform", `translate(${nodeWidth/2 - 14}, ${-nodeHeight/2 + 14})`)
       .style("opacity", isMobile ? 1 : 0)
-      .on("click", (event: MouseEvent) => {
-        event.stopPropagation();
-        onAddRelative(member);
-      });
-
-    addBtn.append("circle")
-      .attr("r", 10)
-      .attr("fill", "white")
-      .attr("stroke", "#f1f5f9")
-      .attr("stroke-width", 1);
-
-    addBtn.append("path")
-      .attr("d", "M-3 0 h6 M0 -3 v6")
-      .attr("stroke", "#3b82f6")
-      .attr("stroke-width", 2)
-      .attr("stroke-linecap", "round");
+      .on("click", (e: MouseEvent) => { e.stopPropagation(); onAddRelative(member); });
+    btn.append("circle").attr("r", 10).attr("fill", "white").attr("stroke", "#f1f5f9");
+    btn.append("path").attr("d", "M-3 0 h6 M0 -3 v6").attr("stroke", "#3b82f6").attr("stroke-width", 2).attr("stroke-linecap", "round");
   }
 }
 
-export default {
-  renderTree
-};
+/**
+ * Setup zoom behavior
+ */
+function setupZoom(svg: d3.Selection<SVGSVGElement, unknown, null, undefined>, g: d3.Selection<SVGGElement, unknown, null, undefined>) {
+  const zoom = d3.zoom<SVGSVGElement, unknown>()
+    .scaleExtent([0.02, 8])
+    .on("zoom", (event) => g.attr("transform", event.transform));
+  
+  svg.call(zoom);
+  return zoom;
+}
+
+/**
+ * Fit tree to view
+ */
+export function fitTreeToView(
+  svg: d3.Selection<SVGSVGElement, unknown, null, undefined>,
+  zoom: d3.ZoomBehavior<SVGSVGElement, unknown>,
+  nodes: any[],
+  width: number,
+  height: number
+) {
+  if (nodes.length === 0) return;
+  
+  const xExtent = d3.extent(nodes, d => d.x);
+  const yExtent = d3.extent(nodes, d => d.y);
+  
+  if (!xExtent[0] || !xExtent[1] || !yExtent[0] || !yExtent[1]) return;
+  
+  const bounds = {
+    x: xExtent[0], y: yExtent[0],
+    width: xExtent[1] - xExtent[0],
+    height: yExtent[1] - yExtent[0]
+  };
+  
+  const scale = calculateFitScale(bounds, width, height);
+  const midX = bounds.x + bounds.width / 2;
+  const midY = bounds.y + bounds.height / 2;
+  const translate = [width/2 - scale * midX, height/2 - scale * midY];
+  
+  svg.transition().duration(750).call(zoom.transform, d3.zoomIdentity.translate(translate[0], translate[1]).scale(scale));
+}
+
+export default { renderTree, fitTreeToView };

@@ -9,4 +9,4 @@ export { default as TreeNodes } from './TreeNodes';
 export { default as TreeConnections } from './TreeConnections';
 export * from './treeLayout';
 export * from './treeBuilder';
-export * from './treeRenderer';
+export * from './treeRendering';
