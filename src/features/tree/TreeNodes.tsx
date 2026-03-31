@@ -45,7 +45,7 @@ export const renderNodes = (
     .style("cursor", "pointer")
     .style("opacity", 0);
 
-  // Card background
+  // Card background with performance optimizations
   nodeGroup.append("rect")
     .attr("width", nodeWidth)
     .attr("height", nodeHeight)
@@ -54,7 +54,8 @@ export const renderNodes = (
     .attr("stroke", (d: MemberNode) => d.data.isPrimary ? "#3b82f6" : "#e2e8f0")
     .attr("stroke-width", (d: MemberNode) => d.data.isPrimary ? 3 : 1)
     .style("filter", "drop-shadow(0 2px 4px rgba(0,0,0,0.1))")
-    .style("transition", "all 0.2s ease");
+    .style("transition", "all 0.2s ease")
+    .style("shape-rendering", "geometricPrecision"); // Better rendering quality
 
   // Avatar circle
   nodeGroup.append("circle")

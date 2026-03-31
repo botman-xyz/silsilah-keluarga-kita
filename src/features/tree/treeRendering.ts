@@ -43,12 +43,13 @@ export function renderTree(
   // Clear previous content
   svgElement.selectAll("*").remove();
   
-  // Setup SVG with larger canvas
+  // Setup SVG with larger canvas and performance optimizations
   const svg = svgElement
     .attr("width", canvasWidth)
     .attr("height", canvasHeight)
     .attr("viewBox", `0 0 ${canvasWidth} ${canvasHeight}`)
-    .attr("preserveAspectRatio", "xMidYMid meet");
+    .attr("preserveAspectRatio", "xMidYMid meet")
+    .style("will-change", "transform"); // GPU acceleration hint
   
   const g = svg.append("g");
   
@@ -94,8 +95,11 @@ export function renderTree(
   // Render connections
   renderLinks(g, links, layout.nodeWidth, layout.nodeHeight);
   
-  // Render nodes
-  renderNodes(g, nodes, {
+  // Render nodes with performance optimization for large trees
+  const maxVisibleNodes = config.members.length > 100 ? 200 : nodes.length; // Limit rendering for performance
+  const visibleNodes = nodes.slice(0, maxVisibleNodes);
+
+  renderNodes(g, visibleNodes, {
     nodeWidth: layout.nodeWidth,
     nodeHeight: layout.nodeHeight,
     isMobile,
