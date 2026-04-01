@@ -6,6 +6,16 @@ Welcome to the Family Tree application documentation. This directory contains co
 
 ### 🏗️ Architecture Documentation
 
+#### [DDD Next Steps](./DDD_NEXT_STEPS.md)
+Actionable implementation guide for enhancing the DDD architecture. Includes:
+- Priority matrix for enhancements
+- CQRS implementation guide
+- Event Sourcing implementation guide
+- Advanced validation with Zod
+- Caching strategy
+- Implementation timeline
+- Success metrics
+
 #### [DDD Architecture](./DDD_ARCHITECTURE.md)
 Comprehensive guide to the Domain-Driven Design architecture implemented in this project. Covers:
 - Architecture layers (Domain, Application, Infrastructure, Presentation)
@@ -78,6 +88,11 @@ Detailed guide to the clean architecture principles used in this project:
    - Understand current status
    - Plan future work
 
+5. **Review [DDD Next Steps](./DDD_NEXT_STEPS.md)**
+   - See actionable enhancements
+   - Understand implementation priorities
+   - Plan your contribution
+
 ### For Experienced Developers
 
 1. **Review [DDD Architecture](./DDD_ARCHITECTURE.md)**
@@ -108,7 +123,8 @@ Detailed guide to the clean architecture principles used in this project:
 1. Read [DDD Implementation Summary](./DDD_IMPLEMENTATION_SUMMARY.md)
 2. Study [Clean Architecture](./CLEAN_ARCHITECTURE.md)
 3. Review all domain layer code
-4. Plan and implement enhancements
+4. Review [DDD Next Steps](./DDD_NEXT_STEPS.md)
+5. Plan and implement enhancements
 
 ## 📁 Project Structure
 
