@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useMemo, lazy, Suspense } from 'react';
 import { Family, Member, UserProfile } from './domain/entities';
 import { useAuth, useFamilies, useMembers } from './presentation/hooks';
+import { memberService } from './infrastructure/container';
 import { isDuplicateMember } from './lib/utils';
 import { Plus, LogOut, Users, Trash2, Edit2, Share2, Search, Scan, Eye, EyeOff, Loader2 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
@@ -183,12 +184,19 @@ export default function App() {
     const member = allMembers.find(m => m.id === memberId);
     if (!member) return;
     
-    await handleSaveMember({
-      ...member,
-      familyId: targetFamilyId,
-      // Only set externalFamilyId if moving to a DIFFERENT family
-      externalFamilyId: member.familyId !== targetFamilyId ? member.familyId : undefined
-    });
+    // Update member's familyId directly using memberService
+    try {
+      await memberService.updateMember(targetFamilyId, memberId, {
+        ...member,
+        familyId: targetFamilyId,
+        // Only set externalFamilyId if moving to a DIFFERENT family
+        externalFamilyId: member.familyId !== targetFamilyId ? member.familyId : undefined,
+        updatedAt: new Date().toISOString()
+      });
+      toast.success(`Berhasil memindahkan ${member.name} ke keluarga lain`);
+    } catch (error) {
+      toast.error('Gagal memindahkan anggota');
+    }
   };
 
   const handleRemoveCollaborator = async (collabUid: string) => {
