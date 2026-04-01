@@ -95,7 +95,7 @@ export const ReactFlowTree: React.FC<ReactFlowTreeProps> = ({
 
   // Convert tree hierarchy to ReactFlow nodes and edges
   const { initialNodes, initialEdges } = useMemo(() => {
-    const treeData = buildTreeHierarchy(members, treePov);
+    const treeData = buildTreeHierarchy(members, treePov as 'suami' | 'istri');
     const nodes: Node[] = [];
     const edges: Edge[] = [];
     const nodeIds = new Set<string>();
