@@ -332,7 +332,6 @@ export default function App() {
         <AnimatePresence>
           {showFamilyModal && (
             <FamilyModal
-              key="family-modal"
               isOpen={showFamilyModal}
               onClose={() => {
                 setShowFamilyModal(false);
@@ -347,7 +346,6 @@ export default function App() {
 
           {showShareModal && (
             <ShareModal
-              key="share-modal"
               isOpen={showShareModal}
               onClose={() => setShowShareModal(false)}
               selectedFamily={selectedFamily}
@@ -357,7 +355,6 @@ export default function App() {
 
           {isSearchOpen && (
             <SearchModal
-              key="search-modal"
               isOpen={isSearchOpen}
               onClose={() => setIsSearchOpen(false)}
               searchTerm={searchTerm}
@@ -373,7 +370,6 @@ export default function App() {
 
           {selectedMemberForDetail && (
             <MemberDetailModal
-              key="member-detail-modal"
               isOpen={!!selectedMemberForDetail}
               onClose={() => setSelectedMemberForDetail(null)}
               member={selectedMemberForDetail}
@@ -393,7 +389,6 @@ export default function App() {
 
           {showMemberModal && (
             <MemberFormModal
-              key="member-form-modal"
               isOpen={showMemberModal}
               onClose={() => { setShowMemberModal(false); setEditingMember(null); }}
               onSave={handleSaveMember}
@@ -406,7 +401,6 @@ export default function App() {
 
           {showScanKKModal && (
             <Suspense
-              key="scan-kk-modal"
               fallback={
               <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
                 <div className="bg-white rounded-2xl p-8 flex flex-col items-center gap-4">
@@ -442,7 +436,6 @@ export default function App() {
 
           {showHelpModal && (
             <HelpModal
-              key="help-modal"
               isOpen={showHelpModal}
               onClose={() => setShowHelpModal(false)}
               onExport={() => exportAllData(families, allMembers)}
@@ -457,7 +450,6 @@ export default function App() {
 
           {showDeleteConfirm && (
             <DeleteFamilyConfirmModal
-              key="delete-confirm-modal"
               isOpen={showDeleteConfirm}
               onClose={() => setShowDeleteConfirm(false)}
               onConfirm={handleDeleteFamily}
@@ -467,7 +459,6 @@ export default function App() {
 
           {showKinshipModal && (
             <Suspense
-              key="kinship-modal"
               fallback={
               <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
                 <div className="bg-white rounded-2xl p-8 flex flex-col items-center gap-4">
@@ -482,7 +473,6 @@ export default function App() {
 
           {showMergeFamiliesModal && (
             <MergeFamiliesModal
-              key="merge-families-modal"
               isOpen={showMergeFamiliesModal}
               onClose={() => setShowMergeFamiliesModal(false)}
               families={families}
@@ -493,7 +483,6 @@ export default function App() {
 
           {showMoveMemberModal && (
             <MoveMemberModal
-              key="move-member-modal"
               isOpen={showMoveMemberModal}
               onClose={() => {
                 setShowMoveMemberModal(false);
