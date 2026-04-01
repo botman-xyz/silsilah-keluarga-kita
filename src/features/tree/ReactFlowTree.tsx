@@ -1,6 +1,6 @@
 /**
  * ReactFlow Tree Component
- * Family tree visualization using ReactFlow
+ * Family tree visualization using ReactFlow with Dagre layout
  */
 
 import React, { useMemo, useCallback, useEffect } from 'react';
@@ -17,6 +17,7 @@ import {
   MarkerType,
   useReactFlow,
 } from '@xyflow/react';
+import dagre from '@dagrejs/dagre';
 import '@xyflow/react/dist/style.css';
 import { Member } from '../../domain/entities';
 import { buildTreeHierarchy, TreeNode } from './treeBuilder';
@@ -37,6 +38,52 @@ const nodeTypes = {
   couple: CoupleNode,
 };
 
+// Dagre layout configuration
+const dagreGraph = new dagre.graphlib.Graph();
+dagreGraph.setDefaultEdgeLabel(() => ({}));
+
+const getLayoutedElements = (
+  nodes: Node[],
+  edges: Edge[],
+  direction = 'TB'
+): { nodes: Node[]; edges: Edge[] } => {
+  const isHorizontal = direction === 'LR';
+  dagreGraph.setGraph({
+    rankdir: direction,
+    nodesep: isHorizontal ? 80 : 150,
+    ranksep: isHorizontal ? 150 : 80,
+    marginx: 50,
+    marginy: 50,
+  });
+
+  nodes.forEach((node) => {
+    const isCouple = node.type === 'couple';
+    const width = isCouple ? 380 : 180;
+    const height = 100;
+    dagreGraph.setNode(node.id, { width, height });
+  });
+
+  edges.forEach((edge) => {
+    dagreGraph.setEdge(edge.source, edge.target);
+  });
+
+  dagre.layout(dagreGraph);
+
+  nodes.forEach((node) => {
+    const nodeWithPosition = dagreGraph.node(node.id);
+    const isCouple = node.type === 'couple';
+    const width = isCouple ? 380 : 180;
+    const height = 100;
+
+    node.position = {
+      x: nodeWithPosition.x - width / 2,
+      y: nodeWithPosition.y - height / 2,
+    };
+  });
+
+  return { nodes, edges };
+};
+
 export const ReactFlowTree: React.FC<ReactFlowTreeProps> = ({
   members,
   searchTerm = '',
@@ -44,7 +91,7 @@ export const ReactFlowTree: React.FC<ReactFlowTreeProps> = ({
   onAddRelative,
   treePov = 'suami',
 }) => {
-  const { fitView, zoomIn, zoomOut, setViewport } = useReactFlow();
+  const { fitView } = useReactFlow();
 
   // Convert tree hierarchy to ReactFlow nodes and edges
   const { initialNodes, initialEdges } = useMemo(() => {
@@ -52,58 +99,18 @@ export const ReactFlowTree: React.FC<ReactFlowTreeProps> = ({
     const nodes: Node[] = [];
     const edges: Edge[] = [];
 
-    // Calculate layout using dagre-like approach
-    const nodeWidth = 180;
-    const nodeHeight = 100;
-    const horizontalSpacing = 80;
-    const verticalSpacing = 150;
-
-    // Track node positions
-    const nodePositions = new Map<string, { x: number; y: number }>();
-
     // Recursive function to process tree nodes
-    const processNode = (
-      treeNode: TreeNode,
-      depth: number = 0,
-      index: number = 0,
-      parentX: number = 0
-    ): { x: number; y: number; width: number } => {
+    const processNode = (treeNode: TreeNode) => {
       if (treeNode.isVirtual) {
         // Process virtual root's children
-        let currentX = 0;
-        treeNode.children.forEach((child, idx) => {
-          const result = processNode(child, 0, idx, currentX);
-          currentX += result.width + horizontalSpacing;
+        treeNode.children.forEach((child) => {
+          processNode(child);
         });
-        return { x: 0, y: 0, width: currentX };
+        return;
       }
 
       const nodeId = treeNode.id;
       const isCouple = treeNode.type === 'couple' && treeNode.spouse;
-      const width = isCouple ? nodeWidth * 2 + 20 : nodeWidth;
-
-      // Calculate position
-      let x = parentX;
-      let y = depth * verticalSpacing;
-
-      // If has children, center parent above children
-      if (treeNode.children.length > 0) {
-        let childX = x;
-        const childResults: { x: number; y: number; width: number }[] = [];
-
-        treeNode.children.forEach((child, idx) => {
-          const result = processNode(child, depth + 1, idx, childX);
-          childResults.push(result);
-          childX += result.width + horizontalSpacing;
-        });
-
-        // Center parent above children
-        const firstChild = childResults[0];
-        const lastChild = childResults[childResults.length - 1];
-        x = (firstChild.x + lastChild.x) / 2;
-      }
-
-      nodePositions.set(nodeId, { x, y });
 
       // Create ReactFlow node
       const nodeData: any = {
@@ -117,7 +124,7 @@ export const ReactFlowTree: React.FC<ReactFlowTreeProps> = ({
       nodes.push({
         id: nodeId,
         type: isCouple ? 'couple' : 'familyMember',
-        position: { x, y },
+        position: { x: 0, y: 0 }, // Will be set by dagre
         data: nodeData,
         sourcePosition: Position.Bottom,
         targetPosition: Position.Top,
@@ -139,14 +146,20 @@ export const ReactFlowTree: React.FC<ReactFlowTreeProps> = ({
             height: 20,
           },
         });
+        processNode(child);
       });
-
-      return { x, y, width };
     };
 
     processNode(treeData);
 
-    return { initialNodes: nodes, initialEdges: edges };
+    // Apply dagre layout
+    const { nodes: layoutedNodes, edges: layoutedEdges } = getLayoutedElements(
+      nodes,
+      edges,
+      'TB' // Top to Bottom layout
+    );
+
+    return { initialNodes: layoutedNodes, initialEdges: layoutedEdges };
   }, [members, treePov, searchTerm, onSelectMember, onAddRelative]);
 
   const [nodes, setNodes, onNodesChange] = useNodesState(initialNodes);

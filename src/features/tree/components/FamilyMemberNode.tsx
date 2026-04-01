@@ -6,7 +6,7 @@
 import React, { memo } from 'react';
 import { Handle, Position } from '@xyflow/react';
 import { Member } from '../../../domain/entities';
-import { User, Plus } from 'lucide-react';
+import { User, Plus, Calendar, MapPin } from 'lucide-react';
 
 interface FamilyMemberNodeData {
   member: Member;
@@ -53,7 +53,7 @@ export const FamilyMemberNode: React.FC<FamilyMemberNodeProps> = memo(({ data })
 
       {/* Node card */}
       <div
-        className="relative bg-white rounded-xl shadow-lg border-2 transition-all duration-200 hover:shadow-xl"
+        className="relative bg-white rounded-xl shadow-lg border-2 transition-all duration-300 hover:shadow-xl hover:scale-105"
         style={{
           width: 180,
           minHeight: 100,
@@ -72,7 +72,7 @@ export const FamilyMemberNode: React.FC<FamilyMemberNodeProps> = memo(({ data })
           {/* Avatar */}
           <div className="flex items-center gap-3 mb-2">
             <div
-              className="w-10 h-10 rounded-full flex items-center justify-center"
+              className="w-10 h-10 rounded-full flex items-center justify-center transition-transform duration-300 group-hover:scale-110"
               style={{ backgroundColor: accentColor, opacity: 0.2 }}
             >
               <User className="w-5 h-5" style={{ color: accentColor }} />
@@ -82,9 +82,12 @@ export const FamilyMemberNode: React.FC<FamilyMemberNodeProps> = memo(({ data })
                 {member.name}
               </h3>
               {member.birthDate && (
-                <p className="text-xs text-slate-500 truncate">
-                  {member.birthDate}
-                </p>
+                <div className="flex items-center gap-1 mt-1">
+                  <Calendar className="w-3 h-3 text-slate-400" />
+                  <p className="text-xs text-slate-500 truncate">
+                    {member.birthDate}
+                  </p>
+                </div>
               )}
             </div>
           </div>
@@ -93,7 +96,7 @@ export const FamilyMemberNode: React.FC<FamilyMemberNodeProps> = memo(({ data })
           {member.gender && (
             <div className="flex items-center gap-1 mt-2">
               <span
-                className="text-xs px-2 py-0.5 rounded-full"
+                className="text-xs px-2 py-0.5 rounded-full font-medium"
                 style={{
                   backgroundColor: accentColor,
                   opacity: 0.2,
@@ -104,13 +107,23 @@ export const FamilyMemberNode: React.FC<FamilyMemberNodeProps> = memo(({ data })
               </span>
             </div>
           )}
+
+          {/* Location if available */}
+          {(member as any).address && (
+            <div className="flex items-center gap-1 mt-2">
+              <MapPin className="w-3 h-3 text-slate-400" />
+              <p className="text-xs text-slate-500 truncate">
+                {(member as any).address}
+              </p>
+            </div>
+          )}
         </div>
 
         {/* Add relative button */}
         {onAddRelative && (
           <button
             onClick={handleAddRelative}
-            className="absolute -top-2 -right-2 w-6 h-6 bg-white rounded-full shadow-md border border-slate-200 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-200 hover:bg-slate-50"
+            className="absolute -top-2 -right-2 w-6 h-6 bg-white rounded-full shadow-md border border-slate-200 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all duration-200 hover:bg-slate-50 hover:scale-110"
             title="Tambah kerabat"
           >
             <Plus className="w-4 h-4 text-blue-500" />

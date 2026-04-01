@@ -6,7 +6,7 @@
 import React, { memo } from 'react';
 import { Handle, Position } from '@xyflow/react';
 import { Member } from '../../../domain/entities';
-import { User, Plus, Heart } from 'lucide-react';
+import { User, Plus, Heart, Calendar } from 'lucide-react';
 
 interface CoupleNodeData {
   member: Member;
@@ -60,7 +60,7 @@ export const CoupleNode: React.FC<CoupleNodeProps> = memo(({ data }) => {
       <div className="flex items-center gap-2">
         {/* Member card */}
         <div
-          className="relative bg-white rounded-xl shadow-lg border-2 transition-all duration-200 hover:shadow-xl cursor-pointer"
+          className="relative bg-white rounded-xl shadow-lg border-2 transition-all duration-300 hover:shadow-xl hover:scale-105 cursor-pointer"
           onClick={handleMemberClick}
           style={{
             width: 180,
@@ -80,7 +80,7 @@ export const CoupleNode: React.FC<CoupleNodeProps> = memo(({ data }) => {
             {/* Avatar */}
             <div className="flex items-center gap-3 mb-2">
               <div
-                className="w-10 h-10 rounded-full flex items-center justify-center"
+                className="w-10 h-10 rounded-full flex items-center justify-center transition-transform duration-300 group-hover:scale-110"
                 style={{ backgroundColor: memberAccentColor, opacity: 0.2 }}
               >
                 <User className="w-5 h-5" style={{ color: memberAccentColor }} />
@@ -90,9 +90,12 @@ export const CoupleNode: React.FC<CoupleNodeProps> = memo(({ data }) => {
                   {member.name}
                 </h3>
                 {member.birthDate && (
-                  <p className="text-xs text-slate-500 truncate">
-                    {member.birthDate}
-                  </p>
+                  <div className="flex items-center gap-1 mt-1">
+                    <Calendar className="w-3 h-3 text-slate-400" />
+                    <p className="text-xs text-slate-500 truncate">
+                      {member.birthDate}
+                    </p>
+                  </div>
                 )}
               </div>
             </div>
@@ -101,7 +104,7 @@ export const CoupleNode: React.FC<CoupleNodeProps> = memo(({ data }) => {
             {member.gender && (
               <div className="flex items-center gap-1 mt-2">
                 <span
-                  className="text-xs px-2 py-0.5 rounded-full"
+                  className="text-xs px-2 py-0.5 rounded-full font-medium"
                   style={{
                     backgroundColor: memberAccentColor,
                     opacity: 0.2,
@@ -124,13 +127,13 @@ export const CoupleNode: React.FC<CoupleNodeProps> = memo(({ data }) => {
         </div>
 
         {/* Heart connection */}
-        <div className="flex flex-col items-center">
+        <div className="flex flex-col items-center animate-pulse">
           <Heart className="w-5 h-5 text-pink-400 fill-pink-400" />
         </div>
 
         {/* Spouse card */}
         <div
-          className="relative bg-white rounded-xl shadow-lg border-2 transition-all duration-200 hover:shadow-xl cursor-pointer"
+          className="relative bg-white rounded-xl shadow-lg border-2 transition-all duration-300 hover:shadow-xl hover:scale-105 cursor-pointer"
           onClick={handleSpouseClick}
           style={{
             width: 180,
@@ -150,7 +153,7 @@ export const CoupleNode: React.FC<CoupleNodeProps> = memo(({ data }) => {
             {/* Avatar */}
             <div className="flex items-center gap-3 mb-2">
               <div
-                className="w-10 h-10 rounded-full flex items-center justify-center"
+                className="w-10 h-10 rounded-full flex items-center justify-center transition-transform duration-300 group-hover:scale-110"
                 style={{ backgroundColor: spouseAccentColor, opacity: 0.2 }}
               >
                 <User className="w-5 h-5" style={{ color: spouseAccentColor }} />
@@ -160,9 +163,12 @@ export const CoupleNode: React.FC<CoupleNodeProps> = memo(({ data }) => {
                   {spouse.name}
                 </h3>
                 {spouse.birthDate && (
-                  <p className="text-xs text-slate-500 truncate">
-                    {spouse.birthDate}
-                  </p>
+                  <div className="flex items-center gap-1 mt-1">
+                    <Calendar className="w-3 h-3 text-slate-400" />
+                    <p className="text-xs text-slate-500 truncate">
+                      {spouse.birthDate}
+                    </p>
+                  </div>
                 )}
               </div>
             </div>
@@ -171,7 +177,7 @@ export const CoupleNode: React.FC<CoupleNodeProps> = memo(({ data }) => {
             {spouse.gender && (
               <div className="flex items-center gap-1 mt-2">
                 <span
-                  className="text-xs px-2 py-0.5 rounded-full"
+                  className="text-xs px-2 py-0.5 rounded-full font-medium"
                   style={{
                     backgroundColor: spouseAccentColor,
                     opacity: 0.2,
@@ -197,7 +203,7 @@ export const CoupleNode: React.FC<CoupleNodeProps> = memo(({ data }) => {
         {onAddRelative && (
           <button
             onClick={handleAddRelative}
-            className="absolute -top-2 -right-2 w-6 h-6 bg-white rounded-full shadow-md border border-slate-200 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-200 hover:bg-slate-50"
+            className="absolute -top-2 -right-2 w-6 h-6 bg-white rounded-full shadow-md border border-slate-200 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all duration-200 hover:bg-slate-50 hover:scale-110"
             title="Tambah kerabat"
           >
             <Plus className="w-4 h-4 text-blue-500" />
