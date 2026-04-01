@@ -98,6 +98,7 @@ export const ReactFlowTree: React.FC<ReactFlowTreeProps> = ({
     const treeData = buildTreeHierarchy(members, treePov);
     const nodes: Node[] = [];
     const edges: Edge[] = [];
+    const nodeIds = new Set<string>();
 
     // Recursive function to process tree nodes
     const processNode = (treeNode: TreeNode) => {
@@ -109,7 +110,16 @@ export const ReactFlowTree: React.FC<ReactFlowTreeProps> = ({
         return;
       }
 
-      const nodeId = treeNode.id;
+      // Ensure unique node ID
+      let nodeId = treeNode.id;
+      if (!nodeId || nodeIds.has(nodeId)) {
+        // Generate unique ID if missing or duplicate
+        const memberId = treeNode.member?.id || 'unknown';
+        const spouseId = treeNode.spouse?.id || '';
+        nodeId = `node_${memberId}_${spouseId}_${nodes.length}`;
+      }
+      nodeIds.add(nodeId);
+
       const isCouple = treeNode.type === 'couple' && treeNode.spouse;
 
       // Create ReactFlow node
@@ -132,10 +142,18 @@ export const ReactFlowTree: React.FC<ReactFlowTreeProps> = ({
 
       // Create edges to children
       treeNode.children.forEach((child) => {
+        // Ensure unique child ID
+        let childId = child.id;
+        if (!childId || nodeIds.has(childId)) {
+          const childMemberId = child.member?.id || 'unknown';
+          const childSpouseId = child.spouse?.id || '';
+          childId = `node_${childMemberId}_${childSpouseId}_${nodes.length}`;
+        }
+        
         edges.push({
-          id: `${nodeId}-${child.id}`,
+          id: `${nodeId}-${childId}`,
           source: nodeId,
-          target: child.id,
+          target: childId,
           type: 'smoothstep',
           animated: false,
           style: { stroke: '#94a3b8', strokeWidth: 2 },

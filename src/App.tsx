@@ -33,6 +33,7 @@ import { MemberFormModal } from './components/modals/MemberFormModal';
 import { HelpModal } from './components/modals/HelpModal';
 import { DeleteFamilyConfirmModal } from './components/modals/DeleteFamilyConfirmModal';
 import MergeFamiliesModal from './components/modals/MergeFamiliesModal';
+import MoveMemberModal from './components/modals/MoveMemberModal';
 
 export default function App() {
   // Data hooks (Clean Architecture)
@@ -53,6 +54,8 @@ export default function App() {
   const [selectedMemberForDetail, setSelectedMemberForDetail] = useState<Member | null>(null);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [showMergeFamiliesModal, setShowMergeFamiliesModal] = useState(false);
+  const [showMoveMemberModal, setShowMoveMemberModal] = useState(false);
+  const [memberToMove, setMemberToMove] = useState<Member | null>(null);
   const [newFamilyName, setNewFamilyName] = useState('');
   const [searchTerm, setSearchTerm] = useState('');
   const [viewMode, setViewMode] = useState<'tree' | 'gentree' | 'stats' | 'timeline' | 'calculator' | 'story' | 'list'>('tree');
@@ -174,6 +177,18 @@ export default function App() {
         externalFamilyId: sourceFamilyId !== targetFamilyId ? sourceFamilyId : undefined
       });
     }
+  };
+
+  const handleMoveMember = async (memberId: string, targetFamilyId: string) => {
+    const member = allMembers.find(m => m.id === memberId);
+    if (!member) return;
+    
+    await handleSaveMember({
+      ...member,
+      familyId: targetFamilyId,
+      // Only set externalFamilyId if moving to a DIFFERENT family
+      externalFamilyId: member.familyId !== targetFamilyId ? member.familyId : undefined
+    });
   };
 
   const handleRemoveCollaborator = async (collabUid: string) => {
@@ -317,6 +332,7 @@ export default function App() {
         <AnimatePresence>
           {showFamilyModal && (
             <FamilyModal
+              key="family-modal"
               isOpen={showFamilyModal}
               onClose={() => {
                 setShowFamilyModal(false);
@@ -331,6 +347,7 @@ export default function App() {
 
           {showShareModal && (
             <ShareModal
+              key="share-modal"
               isOpen={showShareModal}
               onClose={() => setShowShareModal(false)}
               selectedFamily={selectedFamily}
@@ -340,6 +357,7 @@ export default function App() {
 
           {isSearchOpen && (
             <SearchModal
+              key="search-modal"
               isOpen={isSearchOpen}
               onClose={() => setIsSearchOpen(false)}
               searchTerm={searchTerm}
@@ -355,6 +373,7 @@ export default function App() {
 
           {selectedMemberForDetail && (
             <MemberDetailModal
+              key="member-detail-modal"
               isOpen={!!selectedMemberForDetail}
               onClose={() => setSelectedMemberForDetail(null)}
               member={selectedMemberForDetail}
@@ -366,15 +385,15 @@ export default function App() {
               }}
               onDelete={(member) => handleDeleteMember(member.id)}
               onMove={(member) => {
-                // Could open a move member modal or use existing merge families modal
-                // For now, let's set up the merge families modal to accept a single member
-                setShowMergeFamiliesModal(true);
+                setMemberToMove(member);
+                setShowMoveMemberModal(true);
               }}
             />
           )}
 
           {showMemberModal && (
             <MemberFormModal
+              key="member-form-modal"
               isOpen={showMemberModal}
               onClose={() => { setShowMemberModal(false); setEditingMember(null); }}
               onSave={handleSaveMember}
@@ -386,7 +405,9 @@ export default function App() {
           )}
 
           {showScanKKModal && (
-            <Suspense fallback={
+            <Suspense
+              key="scan-kk-modal"
+              fallback={
               <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
                 <div className="bg-white rounded-2xl p-8 flex flex-col items-center gap-4">
                   <Loader2 className="w-8 h-8 animate-spin text-blue-600" />
@@ -421,6 +442,7 @@ export default function App() {
 
           {showHelpModal && (
             <HelpModal
+              key="help-modal"
               isOpen={showHelpModal}
               onClose={() => setShowHelpModal(false)}
               onExport={() => exportAllData(families, allMembers)}
@@ -435,6 +457,7 @@ export default function App() {
 
           {showDeleteConfirm && (
             <DeleteFamilyConfirmModal
+              key="delete-confirm-modal"
               isOpen={showDeleteConfirm}
               onClose={() => setShowDeleteConfirm(false)}
               onConfirm={handleDeleteFamily}
@@ -443,7 +466,9 @@ export default function App() {
           )}
 
           {showKinshipModal && (
-            <Suspense fallback={
+            <Suspense
+              key="kinship-modal"
+              fallback={
               <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
                 <div className="bg-white rounded-2xl p-8 flex flex-col items-center gap-4">
                   <Loader2 className="w-8 h-8 animate-spin text-blue-600" />
@@ -457,11 +482,27 @@ export default function App() {
 
           {showMergeFamiliesModal && (
             <MergeFamiliesModal
+              key="merge-families-modal"
               isOpen={showMergeFamiliesModal}
               onClose={() => setShowMergeFamiliesModal(false)}
               families={families}
               members={allMembers}
               onMerge={handleMergeFamilies}
+            />
+          )}
+
+          {showMoveMemberModal && (
+            <MoveMemberModal
+              key="move-member-modal"
+              isOpen={showMoveMemberModal}
+              onClose={() => {
+                setShowMoveMemberModal(false);
+                setMemberToMove(null);
+              }}
+              member={memberToMove}
+              families={families}
+              members={allMembers}
+              onMove={handleMoveMember}
             />
           )}
         </AnimatePresence>
