@@ -1,4 +1,5 @@
 import React from 'react';
+import { ReactFlowProvider } from '@xyflow/react';
 import { Member } from '../../domain/entities';
 import { ReactFlowTree } from './ReactFlowTree';
 import { MousePointer2 } from 'lucide-react';
@@ -26,20 +27,22 @@ export default function FamilyTree({
    onTogglePov
 }: FamilyTreeProps) {
   return (
-    <div className="w-full h-full bg-slate-50 rounded-xl border border-slate-200 relative">
-      <ReactFlowTree
-        members={members}
-        searchTerm={searchTerm}
-        onSelectMember={onSelectMember}
-        onAddRelative={onAddRelative}
-        treePov={treePov}
-      />
-      
-      {/* Tip */}
-      <div className="absolute top-4 left-4 bg-white/80 backdrop-blur-sm px-4 py-2 rounded-full border border-slate-200 shadow-sm flex items-center gap-2 pointer-events-none">
-        <MousePointer2 className="w-3.5 h-3.5 text-slate-400" />
-        <span className="text-[10px] font-medium text-slate-500">Geser & Zoom untuk navigasi</span>
+    <ReactFlowProvider>
+      <div className="w-full h-full bg-slate-50 rounded-xl border border-slate-200 relative">
+        <ReactFlowTree
+          members={members}
+          searchTerm={searchTerm}
+          onSelectMember={onSelectMember}
+          onAddRelative={onAddRelative}
+          treePov={treePov}
+        />
+        
+        {/* Tip */}
+        <div className="absolute top-4 left-4 bg-white/80 backdrop-blur-sm px-4 py-2 rounded-full border border-slate-200 shadow-sm flex items-center gap-2 pointer-events-none">
+          <MousePointer2 className="w-3.5 h-3.5 text-slate-400" />
+          <span className="text-[10px] font-medium text-slate-500">Geser & Zoom untuk navigasi</span>
+        </div>
       </div>
-    </div>
+    </ReactFlowProvider>
   );
 }
