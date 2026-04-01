@@ -3,7 +3,7 @@
  * Family tree visualization using ReactFlow
  */
 
-import React, { useMemo, useCallback } from 'react';
+import React, { useMemo, useCallback, useEffect } from 'react';
 import {
   ReactFlow,
   Controls,
@@ -15,6 +15,7 @@ import {
   Edge,
   Position,
   MarkerType,
+  useReactFlow,
 } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
 import { Member } from '../../domain/entities';
@@ -43,6 +44,8 @@ export const ReactFlowTree: React.FC<ReactFlowTreeProps> = ({
   onAddRelative,
   treePov = 'suami',
 }) => {
+  const { fitView, zoomIn, zoomOut, setViewport } = useReactFlow();
+
   // Convert tree hierarchy to ReactFlow nodes and edges
   const { initialNodes, initialEdges } = useMemo(() => {
     const treeData = buildTreeHierarchy(members, treePov);
@@ -150,10 +153,19 @@ export const ReactFlowTree: React.FC<ReactFlowTreeProps> = ({
   const [edges, setEdges, onEdgesChange] = useEdgesState(initialEdges);
 
   // Update nodes when dependencies change
-  React.useEffect(() => {
+  useEffect(() => {
     setNodes(initialNodes);
     setEdges(initialEdges);
   }, [initialNodes, initialEdges, setNodes, setEdges]);
+
+  // Fit view when nodes change
+  useEffect(() => {
+    if (nodes.length > 0) {
+      setTimeout(() => {
+        fitView({ padding: 0.2, duration: 300 });
+      }, 100);
+    }
+  }, [nodes, fitView]);
 
   const onNodeClick = useCallback((event: React.MouseEvent, node: Node) => {
     // Node click is handled by the custom node components
