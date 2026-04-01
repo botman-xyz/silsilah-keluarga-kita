@@ -2,6 +2,7 @@
 // Re-exports for convenient importing
 
 export { default as FamilyTree } from './FamilyTree';
+export { ReactFlowTree } from './ReactFlowTree';
 export { ZoomControls } from './ZoomControls';
 export { default as TreeControls } from './TreeControls';
 export { default as TreeBackground } from './TreeBackground';
