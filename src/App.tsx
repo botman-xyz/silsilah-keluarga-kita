@@ -66,6 +66,7 @@ export default function App() {
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [showKinshipModal, setShowKinshipModal] = useState(false);
   const [isAILoading, setIsAILoading] = useState(false);
+  const [isMemberFormLoading, setIsMemberFormLoading] = useState(false);
   
   // POV (Perspective) for tree view: 'suami' (husband left) or 'istri' (wife left)
   const [treePov, setTreePov] = useState<'suami' | 'istri'>('suami');
@@ -153,9 +154,14 @@ export default function App() {
   };
 
   const handleSaveMember = async (memberData: Partial<Member>) => {
-    await handleSaveMemberHandler(memberData, editingMember);
-    setShowMemberModal(false);
-    setEditingMember(null);
+    setIsMemberFormLoading(true);
+    try {
+      await handleSaveMemberHandler(memberData, editingMember);
+      setShowMemberModal(false);
+      setEditingMember(null);
+    } finally {
+      setIsMemberFormLoading(false);
+    }
   };
 
   const handleDeleteMember = async (memberId: string) => {
@@ -404,6 +410,7 @@ export default function App() {
               members={members}
               allMembers={allMembers}
               families={families}
+              isLoading={isMemberFormLoading}
             />
           )}
 
