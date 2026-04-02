@@ -93,6 +93,11 @@ export function validateMemberForm(
     errors.externalFamilyId = 'Keluarga asal menantu harus berbeda dengan keluarga saat ini';
   }
   
+  // Auto-set maritalStatus to 'married' if spouseId is set
+  if (formData.spouseId && formData.maritalStatus !== 'married') {
+    formData.maritalStatus = 'married';
+  }
+  
   return {
     isValid: Object.keys(errors).length === 0,
     errors
