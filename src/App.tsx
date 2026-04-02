@@ -176,6 +176,13 @@ export default function App() {
     // Update each member's familyId to targetFamilyId
     const membersToUpdate = allMembers.filter(m => memberIds.includes(m.id));
     
+    // Check if this is a cross-family marriage (menantu scenario)
+    const isCrossFamilyMarriage = sourceFamilyId !== targetFamilyId;
+    
+    if (isCrossFamilyMarriage) {
+      toast.info(`Memindahkan ${membersToUpdate.length} anggota dari keluarga lain ke keluarga ini (Mantu)`);
+    }
+    
     for (const member of membersToUpdate) {
       await handleSaveMember({
         ...member,
@@ -183,6 +190,10 @@ export default function App() {
         // Only set externalFamilyId if moving to a DIFFERENT family
         externalFamilyId: sourceFamilyId !== targetFamilyId ? sourceFamilyId : undefined
       });
+    }
+    
+    if (isCrossFamilyMarriage) {
+      toast.success(`Berhasil memindahkan ${membersToUpdate.length} anggota sebagai menantu`);
     }
   };
 
