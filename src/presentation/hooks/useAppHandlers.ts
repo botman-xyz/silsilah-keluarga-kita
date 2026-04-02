@@ -3,7 +3,7 @@ import { Family, Member, UserProfile } from '../../domain/entities';
 import { isDuplicateMember } from '../../lib/utils';
 import { toast } from 'sonner';
 import { familyService, memberService } from '../../infrastructure/container';
-import { handleSpouseChanges, syncSpouseOnDelete } from './useSpouseSync';
+import { handleSpouseChanges, syncSpouseOnDelete, syncSpouseOnAdd, syncSpouseOnRemove } from './useSpouseSync';
 import {
   buildFamilyData,
   isFamilyDuplicate,
@@ -197,68 +197,21 @@ export function useAppHandlers({
         const oldSpouseId = editingMember?.spouseId;
         const newSpouseId = memberData.spouseId;
 
-        // Use atomic batch update for spouse changes
-        if (newSpouseId !== oldSpouseId) {
-          // Remove old spouse relationship atomically
-          if (oldSpouseId && newSpouseId) {
-            // Both old and new spouse exist - switch atomically
-            try {
-              await memberService.removeSpouseAtomic(targetFamilyId, editingMember!.id, oldSpouseId);
-              await memberService.setSpouseAtomic(
-                targetFamilyId, 
-                memberData.id!, 
-                newSpouseId,
-                true,
-                memberData.marriageDate
-              );
-            } catch (e) {
-              console.warn('Failed to update spouse relationship atomically:', e);
-              // Fall back to sequential update
-              await memberService.updateMember(targetFamilyId, memberData.id!, {
-                ...memberData,
-                updatedAt: new Date().toISOString()
-              });
-            }
-          } else if (oldSpouseId) {
-            // Only old spouse - remove it
-            try {
-              await memberService.removeSpouseAtomic(targetFamilyId, editingMember!.id, oldSpouseId);
-            } catch (e) {
-              console.warn('Failed to remove old spouse:', e);
-            }
-            // Then update the member
-            await memberService.updateMember(targetFamilyId, memberData.id!, {
-              ...memberData,
-              spouseId: '',
-              maritalStatus: memberData.spouseId ? 'married' : (memberData.maritalStatus || 'single'),
-              updatedAt: new Date().toISOString()
-            });
-          } else if (newSpouseId) {
-            // Only new spouse - add it
-            try {
-              await memberService.setSpouseAtomic(
-                targetFamilyId,
-                memberData.id!,
-                newSpouseId,
-                true,
-                memberData.marriageDate
-              );
-            } catch (e) {
-              console.warn('Failed to add new spouse:', e);
-              // Fall back to sequential update
-              await memberService.updateMember(targetFamilyId, memberData.id!, {
-                ...memberData,
-                updatedAt: new Date().toISOString()
-              });
-            }
-          }
-        } else {
-          // No spouse change - regular update
-          await memberService.updateMember(targetFamilyId, memberData.id!, {
-            ...memberData,
-            updatedAt: new Date().toISOString()
-          });
-        }
+        // Use handleSpouseChanges for proper spouse synchronization
+        await handleSpouseChanges(
+          memberService,
+          targetFamilyId,
+          memberData.id!,
+          oldSpouseId,
+          newSpouseId,
+          memberData.marriageDate
+        );
+        
+        // Update the member with all data
+        await memberService.updateMember(targetFamilyId, memberData.id!, {
+          ...memberData,
+          updatedAt: new Date().toISOString()
+        });
       } else {
         // Create new member - extract required fields from memberData
         const { id, name, gender, birthDate, fatherId, motherId, spouseId, maritalStatus, marriageDate, bio, photoUrl } = memberData;
@@ -279,14 +232,14 @@ export function useAppHandlers({
           updatedAt: new Date().toISOString()
         });
 
-        // If spouse is specified, update the spouse's spouseId and maritalStatus atomically
+        // If spouse is specified, update the spouse's spouseId and maritalStatus
         if (memberData.spouseId) {
           try {
-            await memberService.setSpouseAtomic(
+            await syncSpouseOnAdd(
+              memberService,
               targetFamilyId,
               createdMember.id,
               memberData.spouseId,
-              true,
               memberData.marriageDate
             );
           } catch (e) {
