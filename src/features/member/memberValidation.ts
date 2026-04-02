@@ -10,6 +10,7 @@ export interface FormErrors {
   fatherId?: string;
   motherId?: string;
   spouseId?: string;
+  externalFamilyId?: string;
 }
 
 export interface ValidationResult {
@@ -77,6 +78,19 @@ export function validateMemberForm(
   // Spouse cannot be self
   if (formData.spouseId && formData.id && formData.spouseId === formData.id) {
     errors.spouseId = 'Seseorang tidak bisa menjadi pasangan bagi dirinya sendiri';
+  }
+  
+  // Menantu (in-law) validation
+  if (formData.externalFamilyId && formData.spouseId) {
+    const spouse = allMembers.find(m => m.id === formData.spouseId);
+    if (spouse && spouse.familyId === formData.externalFamilyId) {
+      errors.spouseId = 'Pasangan tidak boleh dari keluarga yang sama dengan keluarga asal menantu';
+    }
+  }
+  
+  // Validate externalFamilyId is different from familyId for menantu
+  if (formData.externalFamilyId && formData.familyId && formData.externalFamilyId === formData.familyId) {
+    errors.externalFamilyId = 'Keluarga asal menantu harus berbeda dengan keluarga saat ini';
   }
   
   return {

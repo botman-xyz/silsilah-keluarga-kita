@@ -160,6 +160,46 @@ export const describePath = (
     }
   }
   
+  // Menantu (in-law) relationships
+  if (distance === 2) {
+    const mid = all.find(m => m.id === path[1]);
+    if (mid) {
+      // Menantu: end is spouse of start's child
+      if (end.spouseId === mid.id && (start.fatherId === mid.id || start.motherId === mid.id)) {
+        return `${end.name} adalah Menantu dari ${start.name}`;
+      }
+      // Menantu: start is spouse of end's child
+      if (start.spouseId === mid.id && (end.fatherId === mid.id || end.motherId === mid.id)) {
+        return `${start.name} adalah Menantu dari ${end.name}`;
+      }
+      // Mertua (in-law parent): end is parent of start's spouse
+      if (start.spouseId === mid.id && (mid.fatherId === end.id || mid.motherId === end.id)) {
+        return `${end.name} adalah Mertua dari ${start.name}`;
+      }
+      // Mertua (in-law parent): start is parent of end's spouse
+      if (end.spouseId === mid.id && (mid.fatherId === start.id || mid.motherId === start.id)) {
+        return `${start.name} adalah Mertua dari ${end.name}`;
+      }
+    }
+  }
+  
+  // Ipar (sibling-in-law) relationships
+  if (distance === 2) {
+    const mid = all.find(m => m.id === path[1]);
+    if (mid) {
+      // Ipar: end is spouse of start's sibling
+      if (end.spouseId === mid.id && 
+          ((start.fatherId && start.fatherId === mid.fatherId) || (start.motherId && start.motherId === mid.motherId))) {
+        return `${end.name} adalah Ipar dari ${start.name}`;
+      }
+      // Ipar: start is spouse of end's sibling
+      if (start.spouseId === mid.id && 
+          ((end.fatherId && end.fatherId === mid.fatherId) || (end.motherId && end.motherId === mid.motherId))) {
+        return `${start.name} adalah Ipar dari ${end.name}`;
+      }
+    }
+  }
+  
   return `Terhubung melalui ${distance} tingkatan silsilah`;
 };
 
