@@ -9,7 +9,7 @@ import { join } from 'path';
 const EMULATOR_CONFIG = {
   projectId: 'silsilah-keluarga-kita-test',
   firestore: {
-    port: 8080,
+    port: 4000,
     host: '127.0.0.1'
   }
 };

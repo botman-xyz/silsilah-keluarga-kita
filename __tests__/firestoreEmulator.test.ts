@@ -55,17 +55,17 @@ describe('Firebase Emulator Integration Tests', () => {
 
   beforeAll(async () => {
     try {
-      // Initialize test environment with emulator (already running on port 8080)
+      // Initialize test environment with emulator (running on port 4000)
       testEnv = await initializeTestEnvironment({
         projectId: TEST_PROJECT_ID,
         firestore: {
           rules: readFileSync(join(process.cwd(), 'firestore.rules'), 'utf8'),
           host: '127.0.0.1',
-          port: 8080
+          port: 4000
         }
       });
       
-      console.log('🔥 Firebase Emulator initialized at 127.0.0.1:8080');
+      console.log('🔥 Firebase Emulator initialized at 127.0.0.1:4000');
       emulatorAvailable = true;
     } catch (error) {
       console.warn('⚠️ Firebase Emulator not available, skipping tests:', error);
