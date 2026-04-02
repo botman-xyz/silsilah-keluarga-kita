@@ -135,6 +135,18 @@ export const describePath = (
     }
   }
   
+  // Siblings (3 hops through shared parent)
+  if (distance === 3) {
+    const mid = all.find(m => m.id === path[1]);
+    if (mid) {
+      // Check if mid is a shared parent of both start and end
+      if ((start.fatherId === mid.id || start.motherId === mid.id) &&
+          (end.fatherId === mid.id || end.motherId === mid.id)) {
+        return "Saudara Kandung";
+      }
+    }
+  }
+  
   // Cousins (3 hops)
   if (distance === 3) {
     const mid1 = all.find(m => m.id === path[1]);

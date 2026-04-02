@@ -9,7 +9,7 @@ import { z } from 'zod';
  * Gender enum schema
  */
 export const GenderSchema = z.enum(['male', 'female', 'other'], {
-  errorMap: () => ({ message: 'Gender must be male, female, or other' })
+  message: 'Gender must be male, female, or other'
 });
 
 /**
@@ -18,9 +18,7 @@ export const GenderSchema = z.enum(['male', 'female', 'other'], {
 export const MaritalStatusSchema = z.enum(
   ['single', 'married', 'divorced', 'widowed'],
   {
-    errorMap: () => ({
-      message: 'Marital status must be single, married, divorced, or widowed'
-    })
+    message: 'Marital status must be single, married, divorced, or widowed'
   }
 );
 
@@ -29,9 +27,9 @@ export const MaritalStatusSchema = z.enum(
  */
 export const MemberNameSchema = z
   .string()
+  .trim()
   .min(1, 'Member name is required')
-  .max(100, 'Member name must be 100 characters or less')
-  .trim();
+  .max(100, 'Member name must be 100 characters or less');
 
 /**
  * Birth date schema
