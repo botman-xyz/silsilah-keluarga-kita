@@ -238,6 +238,10 @@ describe('Firebase Emulator Integration Tests', () => {
 
   describe('Family Tree Relationships', () => {
     beforeEach(async () => {
+      if (!emulatorAvailable) {
+        return;
+      }
+
       // Create main family
       await setDoc(doc(db, 'families', 'utama'), {
         name: 'Keluarga Utama',
@@ -292,6 +296,10 @@ describe('Firebase Emulator Integration Tests', () => {
     });
 
     it('should create parent-child relationship', async () => {
+      if (!emulatorAvailable) {
+        return;
+      }
+
       // Create parents
       await setDoc(doc(db, 'families', 'utama', 'people', 'father-1'), {
         id: 'father-1',
@@ -329,6 +337,10 @@ describe('Firebase Emulator Integration Tests', () => {
     });
 
     it('should create spouse relationship', async () => {
+      if (!emulatorAvailable) {
+        return;
+      }
+
       // Create husband
       await setDoc(doc(db, 'families', 'utama', 'people', 'husband-1'), {
         id: 'husband-1',
@@ -365,6 +377,10 @@ describe('Firebase Emulator Integration Tests', () => {
 
   describe('Document Not Found Scenario (Error Case)', () => {
     it('should handle updating non-existent document', async () => {
+      if (!emulatorAvailable) {
+        return;
+      }
+
       // Try to update a document that doesn't exist
       const nonExistentDoc = doc(db, 'families', 'test-family-1', 'people', 'non-existent');
       
@@ -381,6 +397,10 @@ describe('Firebase Emulator Integration Tests', () => {
     });
 
     it('should handle deleting non-existent document', async () => {
+      if (!emulatorAvailable) {
+        return;
+      }
+
       // Try to delete a document that doesn't exist
       const nonExistentDoc = doc(db, 'families', 'test-family-1', 'people', 'non-existent');
       
@@ -392,6 +412,10 @@ describe('Firebase Emulator Integration Tests', () => {
 
   describe('5 Generation Family Tree', () => {
     beforeEach(async () => {
+      if (!emulatorAvailable) {
+        return;
+      }
+
       // Create main family
       await setDoc(doc(db, 'families', 'utama'), {
         name: 'Keluarga Utama',
@@ -402,6 +426,10 @@ describe('Firebase Emulator Integration Tests', () => {
     });
 
     it('should create 5 generation family tree', async () => {
+      if (!emulatorAvailable) {
+        return;
+      }
+
       // Generation 1: Kakek & Nenek
       await setDoc(doc(db, 'families', 'utama', 'people', 'kakek'), {
         id: 'kakek',
