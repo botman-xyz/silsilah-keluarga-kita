@@ -64,13 +64,10 @@ service cloud.firestore {
 
     // 🔄 Helper untuk cek izin baca ( DRY: konsolidasi logika )
     function canReadFamily(familyId) {
-      return isMember(familyId) || isAdmin() || isFamilyOwner(familyId);
+      // Owner or admin can always read
+      return isFamilyOwner(familyId) || isAdmin();
     }
 
-    // 🔄 Helper untuk cek izin tulis ( DRY: konsolidasi logika )
-    function canWriteFamily(familyId) {
-      return hasRole(familyId, ['owner', 'admin', 'editor']) || isAdmin() || isFamilyOwner(familyId);
-    }
 
     // =========================================
     // ✅ VALIDATION HELPERS (Single Responsibility)
@@ -175,27 +172,21 @@ service cloud.firestore {
       allow read: if canReadFamily(familyId);
 
       // Create: user terautentikasi dan owns family baru
+      // Simplified rule - just require authentication and valid data
       allow create: if isAuthenticated() &&
-        request.resource.data.ownerId == request.auth.uid &&
-        isValidFamily(request.resource.data);
+        request.resource.data.keys().hasAll(['name', 'ownerId', 'createdAt']) &&
+        request.resource.data.name is string &&
+        request.resource.data.name.size() >= 1 &&
+        request.resource.data.name.size() <= 100 &&
+        request.resource.data.ownerId is string;
 
-      // Update: member dengan role editor+
-      allow update: if canWriteFamily(familyId);
+      // Update: owner atau admin
+      allow update: if isFamilyOwner(familyId) || isAdmin();
 
       // Delete: owner atau admin
       allow delete: if hasRole(familyId, ['owner']) || isAdmin();
 
-      // =========================================
-      // 👥 MEMBERS SUBCOLLECTION (User Membership)
-      // =========================================
-      match /members/{memberUserId} {
-        // Read: semua member family
-        allow read: if canReadFamily(familyId);
 
-        // Create/Update/Delete: semua user terautentikasi
-        // (dapat diperketat jika RBAC sudah diimplementasi penuh)
-        allow create, update, delete: if isAuthenticated();
-      }
 
       // =========================================
       // 👨 PEOPLE SUBCOLLECTION (Genealogy Data)
@@ -204,19 +195,12 @@ service cloud.firestore {
         // Read: semua member family
         allow read: if canReadFamily(familyId);
 
-        // Create: writer yang valid dan creator adalah user sendiri
-        allow create: if canWriteFamily(familyId) &&
-          isValidPerson(request.resource.data) &&
-          isNotSelfSpouse(request.resource.data) &&
-          request.resource.data.createdBy == request.auth.uid;
-
-        // Update: writer yang valid + anti-incest basic check
-        allow update: if canWriteFamily(familyId) &&
-          isValidPerson(request.resource.data) &&
-          isNotSelfSpouse(request.resource.data);
+        // Create/Update: owner atau authenticated user yang sudah ada di family
+        allow create, update: if isAuthenticated() &&
+          (isFamilyOwner(familyId) || isAdmin());
 
         // Delete: owner atau admin
-        allow delete: if hasRole(familyId, ['owner']) || isAdmin();
+        allow delete: if isFamilyOwner(familyId) || isAdmin();
       }
 
       // =========================================
@@ -226,27 +210,23 @@ service cloud.firestore {
         // Read: semua member family
         allow read: if canReadFamily(familyId);
 
-        // Create: writer yang valid
-        allow create: if canWriteFamily(familyId) &&
-          isValidFamilyUnit(request.resource.data);
-
-        // Update: writer yang valid
-        allow update: if canWriteFamily(familyId) &&
-          isValidFamilyUnit(request.resource.data);
+        // Create/Update: owner atau authenticated user
+        allow create, update: if isAuthenticated() &&
+          (isFamilyOwner(familyId) || isAdmin());
 
         // Delete: owner atau admin
-        allow delete: if hasRole(familyId, ['owner']) || isAdmin();
+        allow delete: if isFamilyOwner(familyId) || isAdmin();
       }
 
       // =========================================
-      // � AUDIT LOG SUBCOLLECTION
+      // 📝 AUDIT LOG SUBCOLLECTION
       // =========================================
       match /logs/{logId} {
         // Read: owner atau admin
-        allow read: if hasRole(familyId, ['owner']) || isAdmin();
+        allow read: if isFamilyOwner(familyId) || isAdmin();
 
         // Create: semua member
-        allow create: if isMember(familyId);
+        allow create: if isAuthenticated();
       }
     }
   }
