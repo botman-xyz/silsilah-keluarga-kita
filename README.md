@@ -28,6 +28,336 @@ A comprehensive family tree management application built with **React**, **Fireb
 
 ---
 
+# 🌌� Vision
+
+> Build a digital genealogy platform that becomes the **source of truth for family identity**, enabling:
+
+* Historical preservation of family heritage
+* AI-driven insights and relationship inference
+* Social + economic integration (future: cooperatives, DAOs, etc.)
+
+This platform is designed to scale with the **SATU-RAYA ecosystem** — connecting with SatuKas (financial), SatuSuara (governance), and future integrations.
+
+---
+
+# 🔄 Application Workflow
+
+```
+[User Action]
+     ↓
+[React UI (Presentation Layer)]
+     ↓
+[Hook / Controller (useAppHandlers)]
+     ↓
+[Application Service (Use Case)]
+     ↓
+[Domain Logic (Entities, Services, Validation)]
+     ↓
+[Repository Interface (Abstraction)]
+     ↓
+[Infrastructure (Firebase)]
+     ↓
+[Response → UI Update via React State]
+```
+
+### Example Flow: Add Family Member
+
+```
+User clicks "Add Member"
+  ↓
+MemberForm.tsx (UI captures input)
+  ↓
+useAddMember() hook (presentation)
+  ↓
+MemberService.execute(command) [Application Layer]
+  ↓
+Validate via MemberValidation [Domain Layer]
+  ↓
+MemberRepository.save(entity) [Infrastructure Layer]
+  ↓
+Emit Domain Event: MemberCreated [Event Bus]
+  ↓
+React state update → Tree re-renders
+```
+
+---
+
+# 📡 Domain Event Flow
+
+```
+[Domain Event]
+      ↓
+Event Bus (src/domain/events.ts)
+      ↓
+├── Update Family Statistics
+├── Recalculate Relationships
+├── Trigger AI Suggestions
+├── Sync Real-time Updates (Firebase)
+└── Invalidate Cache
+```
+
+### Core Domain Events
+
+| Event | Purpose | Handlers |
+|-------|---------|----------|
+| `MemberCreated` | New member added | Update stats, recalculate tree |
+| `MemberUpdated` | Member info changed | Refresh UI, invalidate cache |
+| `MemberDeleted` | Member removed | Reindex relationships |
+| `RelationshipAdded` | Parent-child/spouse linked | Recalculate degrees |
+| `FamilyShared` | Family access granted | Sync permissions |
+| `MediaUploaded` | Photo/document added | Update member gallery |
+
+### Event Implementation
+
+```typescript
+// Domain publishes event
+class Member extends Entity<MemberProps> {
+  create(props: MemberProps): Member {
+    const member = new Member(props);
+    this.addDomainEvent(new MemberCreated(member));
+    return member;
+  }
+}
+
+// Infrastructure handles event
+class FirebaseEventStore implements IEventStore {
+  async publish(event: DomainEvent): Promise<void> {
+    // Emit to Firebase or trigger Cloud Functions
+  }
+}
+```
+
+---
+
+# 🧠 AI Context (Bounded Context)
+
+AI is not just a feature — it's a **core bounded context** that deserves its own domain.
+
+```
+src/features/ai/
+├── domain/                 # AI-specific business logic
+│   ├── services/          # AI parsing, extraction
+│   └── valueObjects/     # ParsedKK, ExtractedEntity
+├── application/           # AI use cases
+│   └── services/         # ScanKKService, InferRelationService
+├── infrastructure/       # AI implementations
+│   └── ai/              # Gemini API integration
+└── presentation/         # AI UI components
+    ├── ScanKKModal.tsx
+    └── KinshipDictionaryModal.tsx
+```
+
+### AI Responsibilities
+
+| Responsibility | Description |
+|----------------|-------------|
+| **KK OCR Parsing** | Extract text from Family Card images |
+| **Entity Extraction** | Parse names, birth dates, relationships |
+| **Relationship Inference** | Predict familial connections |
+| **Data Normalization** | Standardize Indonesian naming conventions |
+| **Kinship Suggestions** | Propose correct kinship terms |
+
+---
+
+# 🧠 State Management Strategy
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                        SERVER STATE                              │
+│  ┌─────────────┐  ┌─────────────┐  ┌─────────────┐              │
+│  │   Firebase  │  │  Firestore  │  │   Storage   │              │
+│  │    Auth     │  │  (Source of │  │  (Media)    │              │
+│  └─────────────┘  │   Truth)    │  └─────────────┘              │
+│                   └─────────────┘                               │
+└────────────────────────────┬────────────────────────────────────┘
+                             │
+                             ↓
+┌─────────────────────────────────────────────────────────────────┐
+│                      CLIENT STATE                                │
+│  ┌─────────────┐  ┌─────────────┐  ┌─────────────┐              │
+│  │ React Hooks │  │  useState   │  │ useReducer  │              │
+│  │ (useMembers│  │ (UI state)  │  │ (complex    │              │
+│  │  useFamilies│  │             │  │  state)     │              │
+│  └─────────────┘  └─────────────┘  └─────────────┘              │
+└────────────────────────────┬────────────────────────────────────┘
+                             │
+                             ↓
+┌─────────────────────────────────────────────────────────────────┐
+│                      DERIVED STATE                               │
+│  ┌─────────────┐  ┌─────────────┐  ┌─────────────┐              │
+│  │  Tree Layout│  │   Family    │  │Relationship │              │
+│  │  (dagre)    │  │  Statistics │  │ Calculator  │              │
+│  └─────────────┘  └─────────────┘  └─────────────┘              │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+### State Responsibilities
+
+| Layer | Technology | Responsibility |
+|-------|------------|-----------------|
+| Server State | Firebase | Source of truth, persistence |
+| Client State | React hooks | User interactions, form state |
+| Derived State | Computed | Tree layout, statistics, relationships |
+| Cache | Optional (Redis/Local) | Performance optimization |
+
+---
+
+# 🏢 Multi-Tenant Architecture (SaaS Ready)
+
+This application is designed for **multi-tenant** usage — each family is a tenant with isolated data.
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                     TENANT: Family A                             │
+│  ┌─────────────┐  ┌─────────────┐  ┌─────────────┐              │
+│  │  Members    │  │Relationships│  │   Media     │              │
+│  │  {familyId}│  │  {familyId} │  │  {familyId} │              │
+│  └─────────────┘  └─────────────┘  └─────────────┘              │
+└─────────────────────────────────────────────────────────────────┘
+                             │
+                             │ (Firestore Rules enforce isolation)
+                             ↓
+┌─────────────────────────────────────────────────────────────────┐
+│                     TENANT: Family B                             │
+│  ┌─────────────┐  ┌─────────────┐  ┌─────────────┐              │
+│  │  Members    │  │Relationships│  │   Media     │              │
+│  │  {familyId}│  │  {familyId} │  │  {familyId} │              │
+│  └─────────────┘  └─────────────┘  └─────────────┘              │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+### Tenant Isolation Rules
+
+| Rule | Implementation |
+|------|----------------|
+| **Data Scoping** | All queries filtered by `familyId` |
+| **Access Control** | Firestore rules enforce ownership |
+| **Role-Based** | Owner, Admin, Editor, Viewer per family |
+| **Tenant ID** | Embedded in all entity IDs |
+
+### Firestore Collection Design
+
+```
+firestore
+├── users/{uid}                    # User profiles
+├── families/{familyId}            # Family metadata
+│   ├── members/{memberId}        # Family members
+│   ├── relationships/            # Member relationships
+│   └── media/{mediaId}          # Media files
+└── shared/{familyId}             # Cross-family sharing
+```
+
+---
+
+# 🎯 Domain Design Principles (Anti-Anemic)
+
+Our domain follows **rich domain model** principles — entities contain behavior, not just data.
+
+### Core Principles
+
+| Principle | Implementation |
+|-----------|----------------|
+| **Entities contain behavior** | `Member.create()`, `Member.update()` |
+| **Value Objects for concepts** | `Name`, `BirthDate`, `Gender`, `Kinship` |
+| **No primitive obsession** | Wrap primitives in VOs |
+| **Domain enforces invariants** | Business rules in domain, not UI |
+
+### Value Objects (src/domain/valueObjects.ts)
+
+```typescript
+// Instead of: string name, Date birthDate
+// Use:
+
+class Name {
+  constructor(
+    public readonly first: string,
+    public readonly last?: string
+  ) {
+    if (!first || first.trim().length === 0) {
+      throw new DomainError('INVALID_NAME');
+    }
+  }
+}
+
+class BirthDate {
+  constructor(
+    public readonly value: Date,
+    public readonly isApproximate: boolean = false
+  ) {
+    if (value > new Date()) {
+      throw new DomainError('INVALID_BIRTH_DATE');
+    }
+  }
+}
+
+class Gender {
+  static readonly MALE = new Gender('male');
+  static readonly FEMALE = new Gender('female');
+  static readonly UNKNOWN = new Gender('unknown');
+}
+```
+
+### Domain Invariants
+
+| Invariant | Rule |
+|-----------|------|
+| No circular parent | A member cannot be their own ancestor |
+| Valid age difference | Parent must be older than child (min 12 years) |
+| Max parents | Maximum 2 parents per member |
+| Valid spouse | Spouse must be of opposite gender or same-gender allowed |
+
+---
+
+# 🧪 Testing Strategy (Test Pyramid)
+
+| Layer | Test Type | Coverage Target |
+|-------|-----------|-----------------|
+| **Domain** | Pure Unit Tests | 100% |
+| **Application** | Use Case Tests | 90% |
+| **Infrastructure** | Integration Tests | 80% |
+| **UI** | Component + E2E Tests | 70% |
+
+### Test Structure
+
+```
+__tests__/
+├── domain/                     # Pure domain logic
+│   ├── valueObjects.test.ts
+│   ├── memberValidation.test.ts
+│   └── relationshipCalculator.test.ts
+│
+├── application/                # Use case tests
+│   ├── memberService.test.ts
+│   └── familyService.test.ts
+│
+├── infrastructure/             # Integration with Firebase
+│   ├── memberRepository.test.ts
+│   └── firestoreEmulator.test.ts
+│
+e2e/                           # End-to-end flows
+├── auth-login.spec.ts
+├── comprehensive-flows.spec.ts
+└── family-tree-zoom.spec.ts
+```
+
+### Running Tests
+
+```bash
+# Unit tests (Domain + Application)
+npm run test:run
+
+# Integration tests (with Firestore Emulator)
+npm run test:integration
+
+# E2E tests (with Playwright)
+npm run test:e2e
+
+# All tests with coverage
+npm run test:coverage
+```
+
+---
+
 ## 🏗️ Architecture
 
 This project follows **Clean Architecture** with **Domain-Driven Design (DDD)** principles.
