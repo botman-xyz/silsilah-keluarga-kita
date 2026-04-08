@@ -117,19 +117,12 @@ service cloud.firestore {
     // 🚫 ANTI-INCEST HELPERS (Marriage Validation)
     // =========================================
     
-    // Helper to check if spouse is from different family
-    // Note: This is a basic check - complex graph validation is done in Domain Layer
-    function isValidSpouseFamily(data) {
-      // If setting spouseId, spouse must be from different family (anti-incest basic check)
-      // Note: We cannot query other members in Firestore rules, so this is a basic guard
-      // The actual validation is enforced in the Application Layer (MemberService)
-      return true; // Trust the backend validation
-    }
-
     // Helper to prevent self-spouse
     function isNotSelfSpouse(data) {
       return data.spouseId == null || data.spouseId == '' || data.spouseId != data.id;
     }
+
+    // FamilyUnit uses basic validation only (complex rules enforced in app)
 
     // Helper to validate FamilyUnit
     function isValidFamilyUnit(data) {
