@@ -1,0 +1,236 @@
+# =========================================================
+# AI ENGINEERING RULES
+# Clean Architecture + DDD + SOLID + DRY + Atomic + Mini Functions
+# =========================================================
+
+## 1. CORE PRINCIPLES
+- Always follow Clean Architecture
+- Always prioritize Domain over everything
+- Always write small, focused, testable functions
+- Always separate concerns (SRP)
+- Always prefer composition over complexity
+
+---
+
+## 2. ARCHITECTURE RULES
+
+### Dependency Direction (MANDATORY)
+UI -> Application -> Domain <- Infrastructure
+
+- Domain MUST NOT depend on:
+  - UI
+  - Frameworks (React, Next.js, etc)
+  - API / HTTP
+  - Database
+  - Firebase / Supabase
+
+- Infrastructure depends on Domain
+- Application depends on Domain
+- UI depends on Application
+
+---
+
+## 3. DOMAIN RULES (DDD)
+
+- Domain is PURE (no side effects)
+- Domain contains:
+  - Entities
+  - Value Objects
+  - Domain Services
+  - Repository Interfaces
+
+### Entity Rules
+- Must contain behavior (methods)
+- Must not be anemic (not just data)
+
+### Value Object Rules
+- Immutable
+- Self-validated
+
+### Repository Rules
+- Only interface in domain
+- No implementation in domain
+
+---
+
+## 4. APPLICATION (USE CASE) RULES
+
+- All business logic MUST go through Use Cases
+- Use Case is the ONLY entry point for business operations
+
+### Use Case Rules
+- One use case = one responsibility
+- No UI logic
+- No direct database logic
+- Use repository interfaces only
+
+---
+
+## 5. INFRASTRUCTURE RULES
+
+- Contains:
+  - API calls
+  - Database
+  - External services
+
+- Implements repository interfaces
+- Must not contain business logic
+
+---
+
+## 6. UI (ATOMIC DESIGN) RULES
+
+Structure:
+atoms -> molecules -> organisms -> templates -> pages
+
+### UI Rules
+- UI MUST be dumb (presentation only)
+- No business logic inside UI
+- No direct API calls inside UI
+- UI communicates only via Use Cases / Hooks
+
+---
+
+## 7. SOLID RULES
+
+- One file = one responsibility
+- One function = one purpose
+- Depend on abstractions, not implementations
+- Use small, focused interfaces
+- Code must be extendable without modification
+
+---
+
+## 8. FUNCTION RULES (MINI FUNCTIONS)
+
+- Function length <= 20 lines
+- Prefer pure functions
+- Avoid side effects
+- One function = one task
+
+### Naming Rules
+- Use clear, descriptive names:
+  - calculateTotalPrice
+  - validateEmail
+  - formatCurrency
+
+---
+
+## 9. DRY RULES
+
+- Extract reusable logic
+- Avoid duplication
+- Do NOT over-abstract
+- Do NOT optimize too early
+
+---
+
+## 10. FILE SIZE & READABILITY RULES (CRITICAL)
+
+### File Length Limit
+- MAX 300 lines per file (HARD LIMIT)
+- Ideal: 100–200 lines
+
+### Split Rules
+- If file > 200 lines → start refactoring
+- If file > 300 lines → MUST split immediately
+
+### Readability Rules
+- Code must be scannable by AI and humans
+- Avoid long logic blocks
+- Use vertical spacing
+- Group related logic only
+
+---
+
+## 11. FOLDER STRUCTURE RULES
+
+- Use feature-based structure
+
+Example:
+user/
+  user.entity.ts
+  user.repository.ts
+  create-user.usecase.ts
+
+- Avoid type-based global folders:
+  entities/
+  services/
+  utils/
+
+---
+
+## 12. IMPORT RULES
+
+- Domain MUST NOT import:
+  - infrastructure
+  - UI
+  - external libraries
+
+- No cross-layer violation
+
+---
+
+## 13. DATA VALIDATION RULES
+
+- Never trust input
+- Validate at boundaries:
+  - UI (basic validation)
+  - Use Case (business validation)
+
+---
+
+## 14. TESTING RULES
+
+Priority:
+1. Domain
+2. Use Case
+3. UI
+
+- Domain must be 100% testable
+- No external dependency in domain tests
+
+---
+
+## 15. PERFORMANCE RULES
+
+- Lazy load infrastructure
+- Cache only in application layer
+- Avoid unnecessary UI re-renders
+
+---
+
+## 16. ANTI-PATTERNS (FORBIDDEN)
+
+- God Object
+- File > 300 lines
+- Business logic in UI
+- Direct DB/API access from UI
+- Copy-paste code
+- Tight coupling between layers
+
+---
+
+## 17. CODE STYLE RULES
+
+- Use English for code
+- Use clear naming
+- Prefer small modules
+- Prioritize readability over cleverness
+
+---
+
+## 18. AI BEHAVIOR RULES
+
+When generating code:
+- ALWAYS follow architecture rules
+- ALWAYS keep files under 300 lines
+- ALWAYS split large files into modules
+- ALWAYS create small reusable functions
+- NEVER mix UI and business logic
+- ALWAYS use interfaces for dependencies
+- ALWAYS produce clean, modular, scalable code
+
+---
+
+# END OF RULES
