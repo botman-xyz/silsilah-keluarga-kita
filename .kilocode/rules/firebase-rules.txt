@@ -1,0 +1,278 @@
+# firebase-rules.txt
+
+# =========================================================
+
+# AI ENGINEERING RULES — FIREBASE EDITION
+
+# Clean Architecture + DDD + SOLID + DRY
+
+# =========================================================
+
+## 1. CORE PRINCIPLES (WAJIB)
+
+* Gunakan Firebase sebagai backend-as-a-service, bukan business logic utama
+* Domain logic tidak boleh tergantung Firebase
+* Semua akses Firebase melalui Repository Layer
+* Semua data dianggap untrusted (zero trust)
+
+---
+
+## 2. ARCHITECTURE (MANDATORY)
+
+### Dependency Flow
+
+UI → Application → Domain → Infrastructure → Firebase
+
+### Forbidden
+
+* UI langsung call Firebase
+* Domain import Firebase SDK
+* Business logic di Firestore Rules / Cloud Functions
+
+---
+
+## 3. FIRESTORE DESIGN RULES
+
+### Collection Structure
+
+users/{userId}
+families/{familyId}
+families/{familyId}/members/{memberId}
+transactions/{transactionId}
+
+### Rules
+
+* Hindari nested collection dalam (>2 level)
+* Gunakan subcollection hanya jika perlu
+* Gunakan createdAt, updatedAt
+
+---
+
+## 4. DATA MODELING
+
+### Base Entity
+
+type BaseEntity = {
+id: string
+createdAt: string
+updatedAt: string
+}
+
+### Naming
+
+* camelCase (code)
+* snake_case (optional, harus konsisten)
+
+---
+
+## 5. SECURITY RULES (WAJIB KETAT)
+
+### Prinsip
+
+* Default: DENY ALL
+
+### Helper
+
+function isAuthenticated() {
+return request.auth != null;
+}
+
+function isOwner(userId) {
+return request.auth.uid == userId;
+}
+
+### Best Practice
+
+* Validasi semua field
+* Jangan percaya client
+* Gunakan request.resource.data
+
+---
+
+## 6. FIREBASE AUTH RULES
+
+### Wajib
+
+* Semua user harus login
+* Simpan profile di users/{uid}
+
+### Jangan
+
+* Simpan data penting di token saja
+* Gunakan UID tanpa validasi
+
+---
+
+## 7. REPOSITORY PATTERN
+
+### Structure
+
+/domain
+/entities
+/repositories
+
+/infrastructure
+/firebase
+
+### Interface
+
+export interface UserRepository {
+getById(id: string): Promise<User | null>
+save(user: User): Promise<void>
+}
+
+---
+
+## 8. CLOUD FUNCTIONS RULES
+
+Gunakan untuk:
+
+* Heavy logic
+* Trigger event
+* Integrasi API
+
+Jangan:
+
+* Semua logic di client
+* Semua logic di rules
+
+---
+
+## 9. PERFORMANCE RULES
+
+### Firestore
+
+* Gunakan index
+* Gunakan limit
+* Gunakan pagination
+
+### Hindari
+
+* N+1 query
+* Fetch seluruh collection
+
+---
+
+## 10. REALTIME STRATEGY
+
+Gunakan:
+
+* onSnapshot hanya untuk data penting
+
+Hindari:
+
+* Semua data realtime
+
+---
+
+## 11. ERROR HANDLING
+
+try {
+await repo.save(data)
+} catch (e) {
+throw new DomainError("FAILED_SAVE")
+}
+
+---
+
+## 12. OFFLINE & CACHE
+
+* Gunakan offline support Firebase
+* Siap menghadapi conflict
+
+---
+
+## 13. TESTING
+
+* Gunakan mock repository
+* Jangan test langsung ke production
+
+---
+
+## 14. LOGGING & AUDIT
+
+logs/{logId}
+
+Track:
+
+* user
+* waktu
+* perubahan
+
+---
+
+## 15. COST CONTROL
+
+Hindari:
+
+* Read berulang
+* Listener tidak dihentikan
+
+Gunakan:
+
+* Cache
+* Aggregation
+
+---
+
+## 16. AI BEHAVIOR RULE
+
+WAJIB:
+
+* Gunakan repository
+* Validasi input
+* Cek auth
+* Gunakan transaction
+
+DILARANG:
+
+* Direct SDK di UI
+* Query tanpa limit
+* Write tanpa validasi
+
+---
+
+## 17. TRANSACTION RULE
+
+runTransaction(db, async (tx) => {
+// safe update
+})
+
+Gunakan untuk:
+
+* Saldo
+* Data relasional
+
+---
+
+## 18. NAMING STANDARD
+
+User → users
+Family → families
+Transaction → transactions
+
+---
+
+## 19. VERSIONING
+
+version: number
+
+---
+
+## 20. FINAL PRINCIPLE
+
+Firebase adalah infrastructure, bukan business brain
+
+---
+
+## BONUS (SATUKAS STYLE)
+
+* Gunakan ledger system
+* Semua saldo dari transaksi
+* Jangan simpan saldo final tanpa audit trail
+
+# =========================================================
+
+# END OF FILE
+
+# =========================================================

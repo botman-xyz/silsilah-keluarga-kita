@@ -1,0 +1,245 @@
+# =========================================================
+
+# FIREBASE WORKFLOW — CLEAN ARCHITECTURE EDITION
+
+# Step-by-Step Execution (SOP)
+
+# =========================================================
+
+# 0. GLOBAL FLOW (WAJIB DI SEMUA WORKFLOW)
+
+1. UI menerima input / event
+2. Validasi ringan di UI (optional)
+3. Kirim ke Application Layer (use case)
+4. Validasi utama di Application / Domain
+5. Call Repository (interface)
+6. Repository Implementation akses Firebase
+7. Mapping response → Domain Entity
+8. Return ke UI
+
+---
+
+# 1. AUTH WORKFLOW (LOGIN USER)
+
+1. User input email & password
+2. UI call AuthService.login()
+3. Firebase Auth melakukan autentikasi
+4. Jika sukses → dapat UID
+5. Application Layer ambil user profile dari repository
+6. Jika user belum ada → create user document
+7. Simpan ke state (session / store)
+8. Return user ke UI
+
+---
+
+# 2. CREATE DATA WORKFLOW (GENERIC)
+
+1. UI kirim data ke use case (CreateX)
+2. Validate input (schema validation)
+3. Cek user authentication
+4. Generate ID (UUID / Firestore auto ID)
+5. Tambahkan metadata:
+
+   * createdAt
+   * updatedAt
+   * createdBy
+6. Call repository.save(data)
+7. Repository:
+
+   * mapping ke format Firestore
+   * kirim ke Firebase
+8. Return success response
+
+---
+
+# 3. READ DATA WORKFLOW (GET BY ID)
+
+1. UI request data by ID
+2. Call use case (GetXById)
+3. Validasi parameter ID
+4. Cek auth & permission
+5. Call repository.getById(id)
+6. Repository ambil dari Firestore
+7. Mapping → Domain Entity
+8. Return ke UI
+
+---
+
+# 4. LIST DATA WORKFLOW (PAGINATION)
+
+1. UI request list (limit, cursor)
+2. Call use case (ListX)
+3. Validasi query param
+4. Cek auth
+5. Call repository.list(params)
+6. Repository:
+
+   * apply limit
+   * apply cursor
+   * query Firestore
+7. Mapping list → Domain Entity[]
+8. Return + nextCursor
+
+---
+
+# 5. UPDATE DATA WORKFLOW
+
+1. UI kirim update data
+2. Call use case (UpdateX)
+3. Validasi input
+4. Cek auth & ownership
+5. Ambil data lama (repository.getById)
+6. Merge perubahan
+7. Update updatedAt
+8. Call repository.update()
+9. Return updated entity
+
+---
+
+# 6. DELETE DATA WORKFLOW
+
+1. UI request delete
+2. Call use case (DeleteX)
+3. Validasi ID
+4. Cek auth & ownership
+5. Soft delete (recommended):
+
+   * isDeleted = true
+   * deletedAt
+6. Call repository.update()
+7. Return success
+
+---
+
+# 7. TRANSACTION WORKFLOW (CRITICAL DATA)
+
+Contoh: update saldo koperasi
+
+1. UI kirim request transaksi
+2. Call use case (CreateTransaction)
+3. Validasi input
+4. Cek auth
+5. Start Firestore transaction
+6. Ambil data terkait (saldo / akun)
+7. Hitung perubahan
+8. Validasi bisnis (saldo cukup, dll)
+9. Simpan transaksi
+10. Update data terkait
+11. Commit transaction
+12. Return result
+
+---
+
+# 8. REALTIME WORKFLOW
+
+1. UI subscribe ke data tertentu
+2. Call repository.subscribe()
+3. Repository gunakan onSnapshot
+4. Data berubah → trigger callback
+5. Mapping → Domain Entity
+6. Update state UI
+
+NOTE:
+
+* Gunakan hanya untuk data penting
+
+---
+
+# 9. ERROR HANDLING WORKFLOW
+
+1. Semua repository dibungkus try-catch
+2. Tangkap error Firebase
+3. Mapping ke Domain Error:
+
+   * NOT_FOUND
+   * PERMISSION_DENIED
+   * NETWORK_ERROR
+4. Return error ke Application Layer
+5. UI tampilkan pesan sesuai error
+
+---
+
+# 10. LOGGING & AUDIT WORKFLOW
+
+1. Setiap aksi penting trigger log
+2. Buat data:
+
+   * userId
+   * action
+   * entityId
+   * timestamp
+3. Simpan ke collection logs
+4. Optional: kirim ke analytics
+
+---
+
+# 11. OFFLINE & SYNC WORKFLOW
+
+1. User melakukan aksi saat offline
+2. Firebase cache menyimpan perubahan
+3. Saat online:
+
+   * sync otomatis
+4. Jika conflict:
+
+   * gunakan last-write-wins atau custom resolver
+
+---
+
+# 12. CLOUD FUNCTION WORKFLOW
+
+1. Event terjadi (onCreate / onUpdate)
+2. Trigger Cloud Function
+3. Validasi data
+4. Jalankan logic tambahan:
+
+   * kirim notifikasi
+   * hitung agregasi
+5. Update Firestore jika perlu
+
+---
+
+# 13. SECURITY CHECK WORKFLOW
+
+SETIAP REQUEST:
+
+1. Cek request.auth != null
+2. Validasi field
+3. Validasi ownership
+4. Validasi schema
+5. Allow / Deny
+
+---
+
+# 14. PERFORMANCE WORKFLOW
+
+SETIAP QUERY:
+
+1. Gunakan limit
+2. Gunakan index
+3. Hindari full scan
+4. Gunakan pagination
+
+---
+
+# 15. COST OPTIMIZATION WORKFLOW
+
+1. Cek apakah data perlu realtime
+2. Jika tidak → gunakan fetch biasa
+3. Cache di client
+4. Hindari repeated reads
+
+---
+
+# FINAL PRINCIPLE
+
+Workflow = urutan kerja
+Rule = batasan
+
+Keduanya WAJIB digunakan bersamaan
+
+# =========================================================
+
+# END OF FILE
+
+# =========================================================
