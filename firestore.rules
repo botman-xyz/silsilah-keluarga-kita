@@ -131,6 +131,16 @@ service cloud.firestore {
       return data.spouseId == null || data.spouseId == '' || data.spouseId != data.id;
     }
 
+    // Helper to validate FamilyUnit
+    function isValidFamilyUnit(data) {
+      let requiredKeys = [
+        'familyId', 'husbandId', 'wifeId', 'childrenIds',
+        'marriageDate', 'divorceDate', 'status', 'createdAt', 'updatedAt'
+      ];
+      return hasOnlyAllowedKeys(data, requiredKeys) &&
+        (data.status == null || data.status in ['active', 'divorced', 'annulled']);
+    }
+
     // =========================================
     // 🧪 TEST COLLECTION (Public Read)
     // =========================================
@@ -217,7 +227,26 @@ service cloud.firestore {
       }
 
       // =========================================
-      // 📜 AUDIT LOG SUBCOLLECTION
+      // 💑 FAMILYUNIT SUBCOLLECTION (Marriage Units)
+      // =========================================
+      match /familyUnits/{unitId} {
+        // Read: semua member family
+        allow read: if canReadFamily(familyId);
+
+        // Create: writer yang valid
+        allow create: if canWriteFamily(familyId) &&
+          isValidFamilyUnit(request.resource.data);
+
+        // Update: writer yang valid
+        allow update: if canWriteFamily(familyId) &&
+          isValidFamilyUnit(request.resource.data);
+
+        // Delete: owner atau admin
+        allow delete: if hasRole(familyId, ['owner']) || isAdmin();
+      }
+
+      // =========================================
+      // � AUDIT LOG SUBCOLLECTION
       // =========================================
       match /logs/{logId} {
         // Read: owner atau admin
