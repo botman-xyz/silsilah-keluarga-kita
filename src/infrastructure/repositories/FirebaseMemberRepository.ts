@@ -81,19 +81,14 @@ export class FirebaseMemberRepository implements IMemberRepository {
           const memberSnap = await getDoc(memberDocRef);
           if (memberSnap.exists()) {
             const memberData = memberSnap.data() as Member;
-            // If familyId changed, log it for debugging
-            if (memberData.familyId && memberData.familyId !== familyId) {
-              console.log(`Member found in different family, updating familyId: ${memberData.familyId} -> ${familyId}`);
-            }
             // Member exists in different family - this is a mantu (in-law) scenario
-            // Update the member in their original family first
+            // Update the member in their original family
             await updateDoc(memberDocRef, data as Record<string, unknown>);
             return;
           }
         }
-        // Document doesn't exist anywhere - log and skip silently
-        console.warn(`Document not found: families/${familyId}/people/${memberId}`);
-        return;
+        // Document doesn't exist anywhere - throw an error for better error handling
+        throw new Error(`Member not found: ${memberId} in family ${familyId} or any other family`);
       }
       
       await updateDoc(docRef, data as Record<string, unknown>);

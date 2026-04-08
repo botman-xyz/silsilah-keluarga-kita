@@ -5,6 +5,11 @@ import { UserProfile } from '../entities';
  */
 export interface IAuthRepository {
   /**
+   * Get current authenticated user ID (synchronous)
+   */
+  getCurrentUserId(): string | null;
+  
+  /**
    * Get current authenticated user
    */
   getCurrentUser(): Promise<UserProfile | null>;

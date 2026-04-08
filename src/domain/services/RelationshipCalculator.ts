@@ -228,7 +228,9 @@ export const calculateRelationship = (
     return { label: "Hubungan Jauh atau Belum Terhubung", path: [] };
   }
   
-  const pathMembers = path.map(id => members.find(m => m.id === id)!).filter(Boolean);
+  const pathMembers = path
+    .map(id => members.find(m => m.id === id))
+    .filter((m): m is Member => m !== undefined);
   const label = describePath(path, m1, m2, members);
   
   return { label, path: pathMembers };

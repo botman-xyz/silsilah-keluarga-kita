@@ -5,11 +5,20 @@
 
 import { ICache, CacheConfig } from '../../domain/cache/ICache';
 
+// Redis client type (using unknown for type safety)
+type RedisClient = {
+  get(key: string): Promise<string | null>;
+  setex(key: string, ttl: number, value: string): Promise<void>;
+  del(key: string): Promise<number>;
+  flushdb(): Promise<void>;
+  exists(key: string): Promise<number>;
+};
+
 export class RedisCache<T> implements ICache<T> {
-  private redis: any;
+  private redis: RedisClient;
   private config: CacheConfig;
 
-  constructor(redisClient: any, config: CacheConfig) {
+  constructor(redisClient: RedisClient, config: CacheConfig) {
     this.redis = redisClient;
     this.config = config;
   }

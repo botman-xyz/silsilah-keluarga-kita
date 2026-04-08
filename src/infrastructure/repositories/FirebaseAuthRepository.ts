@@ -8,6 +8,13 @@ import { IAuthRepository } from '../../domain/repositories';
  * Firebase implementation of IAuthRepository
  */
 export class FirebaseAuthRepository implements IAuthRepository {
+  /**
+   * Get current authenticated user ID (synchronous)
+   */
+  getCurrentUserId(): string | null {
+    return auth.currentUser?.uid ?? null;
+  }
+
   async getCurrentUser(): Promise<UserProfile | null> {
     const currentUser = auth.currentUser;
     if (!currentUser) return null;

@@ -5,6 +5,7 @@
 
 import { Member } from '../../domain/entities';
 import { IMemberRepository } from '../../domain/repositories/IMemberRepository';
+import { IAuthRepository } from '../../domain/repositories/IAuthRepository';
 import { DomainEventDispatcher } from '../../domain/events';
 import {
   CreateMemberCommand,
@@ -18,6 +19,7 @@ import {
 export class MemberCommandHandler {
   constructor(
     private memberRepository: IMemberRepository,
+    private authRepository: IAuthRepository,
     private eventDispatcher: DomainEventDispatcher
   ) {}
 
@@ -27,6 +29,9 @@ export class MemberCommandHandler {
   async handleCreateMember(command: CreateMemberCommand): Promise<Member> {
     // Validate command
     this.validateCreateMemberCommand(command);
+
+    // Get current user ID from auth repository
+    const currentUserId = this.authRepository.getCurrentUserId() ?? 'system';
 
     // Create member data
     const memberData: Omit<Member, 'id'> = {
@@ -42,7 +47,7 @@ export class MemberCommandHandler {
       marriageDate: command.marriageDate,
       bio: command.bio,
       photoUrl: command.photoUrl,
-      createdBy: 'system', // TODO: Get from auth context
+      createdBy: currentUserId,
       updatedAt: new Date().toISOString()
     };
 
