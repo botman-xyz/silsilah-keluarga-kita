@@ -8,7 +8,8 @@ import {
   Calendar,
   Heart,
   Image,
-  FileText
+  FileText,
+  X
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { validateMemberForm, FormErrors } from './memberValidation';
@@ -45,6 +46,9 @@ export function MemberForm({
   const [currentSection, setCurrentSection] = useState<FormSection>('basic');
   const [errors, setErrors] = useState<FormErrors>({});
   const [touched, setTouched] = useState<Record<string, boolean>>({});
+  const [showMediaModal, setShowMediaModal] = useState(false);
+  const [mediaUrl, setMediaUrl] = useState('');
+  const [mediaName, setMediaName] = useState('');
   
   const [formData, setFormData] = useState<Partial<Member>>(() => {
     const base = {
@@ -141,15 +145,28 @@ export function MemberForm({
   };
 
   const handleAddMedia = () => {
-    const url = prompt("Masukkan URL Media (Gambar/Dokumen):");
-    const name = prompt("Masukkan Nama Media (misal: Akta Kelahiran):");
-    if (url && name) {
-      const type = (url.match(/\.(jpeg|jpg|gif|png|webp)$/i)) ? 'image' : 'document';
+    setMediaUrl('');
+    setMediaName('');
+    setShowMediaModal(true);
+  };
+
+  const handleMediaModalSave = () => {
+    if (mediaUrl && mediaName) {
+      const type = (mediaUrl.match(/\.(jpeg|jpg|gif|png|webp)$/i)) ? 'image' : 'document';
       setFormData(prev => ({
         ...prev,
-        media: [...(prev.media || []), { url, name, type: type as any }]
+        media: [...(prev.media || []), { url: mediaUrl, name: mediaName, type: type as any }]
       }));
+      setShowMediaModal(false);
+      setMediaUrl('');
+      setMediaName('');
     }
+  };
+
+  const handleMediaModalCancel = () => {
+    setShowMediaModal(false);
+    setMediaUrl('');
+    setMediaName('');
   };
 
   const handleRemoveMedia = (index: number) => {
@@ -328,6 +345,67 @@ export function MemberForm({
           Batal
         </button>
       </div>
+
+      {/* Media URL Modal */}
+      {showMediaModal && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-2xl p-6 w-full max-w-md shadow-xl">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-lg font-semibold text-slate-800">Tambah Media</h3>
+              <button 
+                type="button"
+                onClick={handleMediaModalCancel}
+                className="p-1 hover:bg-slate-100 rounded-lg"
+              >
+                <X className="w-5 h-5 text-slate-500" />
+              </button>
+            </div>
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1">
+                  URL Media
+                </label>
+                <input
+                  type="url"
+                  value={mediaUrl}
+                  onChange={(e) => setMediaUrl(e.target.value)}
+                  placeholder="https://example.com/media.jpg"
+                  className="w-full px-4 py-2.5 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1">
+                  Nama Media
+                </label>
+                <input
+                  type="text"
+                  value={mediaName}
+                  onChange={(e) => setMediaName(e.target.value)}
+                  placeholder="Akta Kelahiran"
+                  className="w-full px-4 py-2.5 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
+            </div>
+            <div className="flex gap-3 mt-6">
+              <button
+                type="button"
+                onClick={handleMediaModalCancel}
+                className="flex-1 px-4 py-2.5 bg-slate-100 text-slate-600 rounded-xl font-medium hover:bg-slate-200 transition-all"
+              >
+                Batal
+              </button>
+              <button
+                type="button"
+                onClick={handleMediaModalSave}
+                disabled={!mediaUrl || !mediaName}
+                className="flex-1 px-4 py-2.5 bg-blue-600 text-white rounded-xl font-medium hover:bg-blue-700 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                Tambah
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

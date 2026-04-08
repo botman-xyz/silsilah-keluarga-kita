@@ -15,17 +15,19 @@ export interface ConnectionData {
 
 interface TreeConnectionProps {
   connections: ConnectionData[];
-  options?: {
-    strokeColor?: string;
-    strokeWidth?: number;
-    animated?: boolean;
-  };
+  options?: TreeConnectionOptions;
 }
 
-export const TreeConnection: React.FC<TreeConnectionProps> = ({ 
+interface TreeConnectionOptions {
+  strokeColor?: string;
+  strokeWidth?: number;
+  animated?: boolean;
+}
+
+export const TreeConnection = ({ 
   connections,
   options = {}
-}) => {
+}: TreeConnectionProps): React.ReactElement => {
   const {
     strokeColor = "#94a3b8",
     strokeWidth = 2,
