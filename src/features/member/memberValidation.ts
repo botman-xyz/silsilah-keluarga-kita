@@ -79,7 +79,35 @@ export function validateMemberForm(
   if (formData.spouseId && formData.id && formData.spouseId === formData.id) {
     errors.spouseId = 'Seseorang tidak bisa menjadi pasangan bagi dirinya sendiri';
   }
-  
+
+  // Incest prevention: Spouse cannot be from the same blood family
+  if (formData.spouseId && formData.familyId) {
+    const spouse = allMembers.find(m => m.id === formData.spouseId);
+    // Check if spouse is from same family (blood family)
+    if (spouse && spouse.familyId === formData.familyId) {
+      errors.spouseId = 'Pasangan tidak boleh dari keluarga yang sama (hindari inses)';
+    }
+    // Check if spouse is a direct blood relative (parent, child, sibling)
+    if (spouse) {
+      // Check if spouse is parent
+      if (spouse.id === formData.fatherId || spouse.id === formData.motherId) {
+        errors.spouseId = 'Pasangan tidak boleh merupakan orang tua';
+      }
+      // Check if spouse is child
+      const spouseChildren = allMembers.filter(m => m.fatherId === spouse.id || m.motherId === spouse.id);
+      if (spouseChildren.some(child => child.id === formData.id)) {
+        errors.spouseId = 'Pasangan tidak boleh merupakan anak';
+      }
+      // Check if spouse is sibling (same parents)
+      if (
+        (spouse.fatherId && spouse.fatherId === formData.fatherId && formData.fatherId) ||
+        (spouse.motherId && spouse.motherId === formData.motherId && formData.motherId)
+      ) {
+        errors.spouseId = 'Pasangan tidak boleh merupakan saudara kandung';
+      }
+    }
+  }
+
   // Menantu (in-law) validation
   if (formData.externalFamilyId && formData.spouseId) {
     const spouse = allMembers.find(m => m.id === formData.spouseId);

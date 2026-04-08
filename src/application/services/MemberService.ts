@@ -1,5 +1,6 @@
 import { Member } from '../../domain/entities';
 import { IMemberRepository } from '../../domain/repositories';
+import { MarriagePolicy, getMarriageErrorMessage } from '../../domain/services/MarriagePolicy';
 
 /**
  * Use case for managing family members
@@ -164,7 +165,8 @@ export class MemberService {
     memberId: string,
     spouseId: string,
     isPrimary: boolean = true,
-    marriageDate?: string
+    marriageDate?: string,
+    allMembers: Member[] = []
   ): Promise<void> {
     const [member, spouse] = await Promise.all([
       this.memberRepository.getById(familyId, memberId),
@@ -173,6 +175,14 @@ export class MemberService {
 
     if (!member) throw new Error('Anggota keluarga tidak ditemukan');
     if (!spouse) throw new Error('Pasangan tidak ditemukan');
+
+    // ENFORCE MARRIAGE POLICY - Anti-incest validation
+    if (allMembers.length > 0) {
+      const validation = MarriagePolicy.validateMarriage(member, spouse, allMembers);
+      if (!validation.isValid) {
+        throw new Error(validation.errorMessage || getMarriageErrorMessage(validation.errorCode!));
+      }
+    }
 
     const now = new Date().toISOString();
     

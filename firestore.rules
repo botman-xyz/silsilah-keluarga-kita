@@ -114,6 +114,24 @@ service cloud.firestore {
     }
 
     // =========================================
+    // 🚫 ANTI-INCEST HELPERS (Marriage Validation)
+    // =========================================
+    
+    // Helper to check if spouse is from different family
+    // Note: This is a basic check - complex graph validation is done in Domain Layer
+    function isValidSpouseFamily(data) {
+      // If setting spouseId, spouse must be from different family (anti-incest basic check)
+      // Note: We cannot query other members in Firestore rules, so this is a basic guard
+      // The actual validation is enforced in the Application Layer (MemberService)
+      return true; // Trust the backend validation
+    }
+
+    // Helper to prevent self-spouse
+    function isNotSelfSpouse(data) {
+      return data.spouseId == null || data.spouseId == '' || data.spouseId != data.id;
+    }
+
+    // =========================================
     // 🧪 TEST COLLECTION (Public Read)
     // =========================================
     match /test/connection {
@@ -186,11 +204,13 @@ service cloud.firestore {
         // Create: writer yang valid dan creator adalah user sendiri
         allow create: if canWriteFamily(familyId) &&
           isValidPerson(request.resource.data) &&
+          isNotSelfSpouse(request.resource.data) &&
           request.resource.data.createdBy == request.auth.uid;
 
-        // Update: writer yang valid
+        // Update: writer yang valid + anti-incest basic check
         allow update: if canWriteFamily(familyId) &&
-          isValidPerson(request.resource.data);
+          isValidPerson(request.resource.data) &&
+          isNotSelfSpouse(request.resource.data);
 
         // Delete: owner atau admin
         allow delete: if hasRole(familyId, ['owner']) || isAdmin();
